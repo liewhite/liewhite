@@ -9,7 +9,7 @@ sonatypeCredentialHost             := "s01.oss.sonatype.org"
 ThisBuild / sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 
 val zioVersion     = "2.0.10"
-val zioJsonVersion = "0.4.2"
+val zioJsonVersion = "0.5.0"
 
 lazy val common = project
   .in(file("common"))
