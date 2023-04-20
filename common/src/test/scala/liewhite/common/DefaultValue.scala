@@ -1,4 +1,4 @@
-package io.github.liewhite.common
+package liewhite.common
 
 case class A(a: Int, b: String ="123")
 class DefaultValueTest extends munit.FunSuite {

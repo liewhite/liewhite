@@ -1,4 +1,4 @@
-package io.github.liewhite.common
+package liewhite.common
 
 import scala.annotation.StaticAnnotation
 
