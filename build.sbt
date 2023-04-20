@@ -8,7 +8,7 @@ ThisBuild / publishTo              := sonatypePublishToBundle.value
 sonatypeCredentialHost             := "s01.oss.sonatype.org"
 ThisBuild / sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 
-val zioVersion     = "2.0.10"
+val zioVersion     = "2.0.13"
 val zioJsonVersion = "0.5.0"
 
 lazy val common = project
@@ -31,12 +31,27 @@ lazy val sqlx = project
     libraryDependencies += "org.jooq"       % "jooq"       % "3.17.7",
     libraryDependencies += "org.jooq"       % "jooq-meta"  % "3.17.7",
     libraryDependencies += "com.zaxxer"     % "HikariCP"   % "5.0.1",
-    libraryDependencies += "org.scalameta" %% "munit"      % "0.7.29" % Test
   ).dependsOn(common)
+
+val rpcZioDeps = Seq(
+  "dev.zio" %% "zio" % zioVersion,
+  "dev.zio" %% "zio-concurrent" % zioVersion,
+  "dev.zio" %% "zio-streams" % zioVersion,
+  "dev.zio" %% "zio-json" % zioJsonVersion,
+)
+
+lazy val rpc = project
+  .in(file("rpc"))
+  .settings(
+    name                                        := "rpc",
+    libraryDependencies ++= rpcZioDeps,
+    libraryDependencies += "com.rabbitmq" % "amqp-client" % "5.17.0",
+  )
+
 
 lazy val root = project
   .in(file("."))
   .settings(
     publish / skip := true,
   )
-  .aggregate(sqlx,common)
+  .aggregate(sqlx,rpc,common)

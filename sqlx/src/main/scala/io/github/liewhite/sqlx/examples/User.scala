@@ -38,6 +38,7 @@ object Detail {
       })
   }
 }
+
 @TableName("split_user")
 @SplitTable(5)
 case class User(
