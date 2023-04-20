@@ -7,27 +7,39 @@ import com.rabbitmq.client.Delivery
 
 import liewhite.rpc.RpcClient
 import liewhite.rpc.{RpcFailure, RpcServer}
-class Broadcast[IN: JsonEncoder: JsonDecoder](
-    route: String
-) {
+import zio.schema.Schema
+
+class Broadcast[IN: JsonEncoder: JsonDecoder: Schema](
+    route: String) {
   def subscribe(
       queueName: String,
       callback: IN => Task[Unit]
-  ): RIO[RpcServer, Unit] = {
+    ): RIO[RpcServer, Unit] = {
     for {
       server <- ZIO.service[RpcServer]
-      _ <- server.listen(
+      _      <- server.listen(
         route,
         req => {
           for {
             body <- ZIO
               .fromEither(String(req.getBody()).fromJson[IN])
               .mapError(err => RpcFailure(400, 0, err))
-            _ <- callback(body)
+            _    <- callback(body)
             ser = Array.emptyByteArray.toJson.getBytes()
           } yield ser
         },
         Some(queueName)
+      )
+      _      <- server.listen(
+        route + ".doc",
+        _ => {
+          val in = summon[Schema[IN]]
+          ZIO.succeed(
+            s"""|IN:
+             |${in.ast}
+             |""".stripMargin.getBytes()
+          )
+        }
       )
     } yield ()
   }
@@ -35,7 +47,7 @@ class Broadcast[IN: JsonEncoder: JsonDecoder](
   def broadcast(req: IN): ZIO[RpcClient, Throwable, Unit] = {
     for {
       client <- ZIO.service[RpcClient]
-      res <- client.send(route, req.toJson.getBytes)
+      res    <- client.send(route, req.toJson.getBytes)
     } yield res
   }
 

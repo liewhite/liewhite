@@ -40,12 +40,18 @@ val rpcZioDeps = Seq(
   "dev.zio" %% "zio-streams"    % zioVersion,
   "dev.zio" %% "zio-json"       % zioJsonVersion
 )
+val zioSchemaDeps = Seq(
+  "dev.zio" %% "zio-schema" % "0.4.10",
+  "dev.zio" %% "zio-schema-json" % "0.4.10",
+  "dev.zio" %% "zio-schema-derivation" % "0.4.10",
+)
 
 lazy val rpc = project
   .in(file("rpc"))
   .settings(
     name                                 := "rpc",
     libraryDependencies ++= rpcZioDeps,
+    libraryDependencies ++= zioSchemaDeps,
     libraryDependencies += "com.rabbitmq" % "amqp-client" % "5.17.0"
   )
 
