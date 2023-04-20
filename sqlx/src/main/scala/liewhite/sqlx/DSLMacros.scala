@@ -6,36 +6,33 @@ import scala.compiletime.summonInline
 
 object DSLMacros {
   transparent inline def refinementQuery[Q <: Query, T <: Product](
-      q: Q,
-      table: Table[T]
-    ) = {
+    q: Q,
+    table: Table[T]
+  ) =
     ${ refinementQueryImpl[Q, T]('q, 'table) }
-  }
 
   def refinementQueryImpl[Q <: Query: Type, T <: Product: Type](
-      q: Expr[Q],
-      table: Expr[Table[T]]
-    )(using Quotes
-    ): Expr[Any] = {
+    q: Expr[Q],
+    table: Expr[Table[T]]
+  )(using Quotes): Expr[Any] = {
     import quotes.reflect.*
 
     val tableName     = TypeRepr.of[T].classSymbol.get.name
     val tableNameExpr = Expr(tableName)
 
-    def recur[mels: Type, mets: Type](baseType: TypeRepr): TypeRepr = {
+    def recur[mels: Type, mets: Type](baseType: TypeRepr): TypeRepr =
       Type.of[mels] match
         case '[mel *: melTail] => {
           Type.of[mets] match {
             case '[head *: tail] => {
-              val label     = Type.valueOfConstant[mel].get.toString
+              val label = Type.valueOfConstant[mel].get.toString
               val withField =
                 Refinement(baseType, label, TypeRepr.of[Field[head]])
               recur[melTail, tail](withField)
             }
           }
         }
-        case '[EmptyTuple]     => baseType
-    }
+        case '[EmptyTuple] => baseType
 
     Expr.summon[Mirror.ProductOf[T]].get match {
       case '{

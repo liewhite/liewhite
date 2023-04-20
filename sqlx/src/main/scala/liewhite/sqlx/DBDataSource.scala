@@ -8,19 +8,20 @@ import liewhite.sqlx.DBDataSource
 import org.jooq.SQLDialect
 
 case class DBConfig(
-    `type`: String,
-    host: String,
-    username: String,
-    db: String,
-    port: Option[Int] = None,
-    password: Option[String] = None,
-    maxConnection: Int = 20,
-    minIdle: Int = 1,
-    idleMills: Int = 60 * 1000)
+  `type`: String,
+  host: String,
+  username: String,
+  db: String,
+  port: Option[Int] = None,
+  password: Option[String] = None,
+  maxConnection: Int = 20,
+  minIdle: Int = 1,
+  idleMills: Int = 60 * 1000
+)
 
 class DBDataSource(val config: DBConfig) {
-  val datasource          = new HikariDataSource()
-  val port                = config.port.getOrElse(
+  val datasource = new HikariDataSource()
+  val port = config.port.getOrElse(
     if (config.`type` == "mysql") {
       3306
     } else if (config.`type` == "postgresql") {
@@ -52,11 +53,10 @@ class DBDataSource(val config: DBConfig) {
 }
 
 object DBDataSource {
-  def layer: ZLayer[DBConfig, Nothing, DBDataSource] = {
+  def layer: ZLayer[DBConfig, Nothing, DBDataSource] =
     ZLayer {
       for {
         config <- ZIO.service[DBConfig]
       } yield DBDataSource(config)
     }
-  }
 }

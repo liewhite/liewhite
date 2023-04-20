@@ -14,13 +14,9 @@ import zio.ZIO
 import org.jooq.DSLContext
 import liewhite.common.*
 
-class DriverNotSupportError(driver: String)
-    extends Exception(s"driver not support: $driver")
+class DriverNotSupportError(driver: String) extends Exception(s"driver not support: $driver")
 
-case class Idx(
-    name: String,
-    cols: Vector[String],
-    unique: Boolean) {
+case class Idx(name: String, cols: Vector[String], unique: Boolean) {
   def indexName: String = {
     val prefix = if (unique) "ui:" else "i:"
     prefix + cols.mkString("-")
@@ -39,7 +35,7 @@ trait Table[T <: Product: Mirror.ProductOf] extends Selectable {
 
   def table: jooq.Table[org.jooq.Record] = jooq.impl.DSL.table(tableName)
 
-  def splitWith(key: Long): self.type = {
+  def splitWith(key: Long): self.type =
     (new Table[T] {
       def tableName: String = {
         val split   = self.splitCount.get
@@ -51,15 +47,11 @@ trait Table[T <: Product: Mirror.ProductOf] extends Selectable {
 
       override def indexes: Vector[Idx] = ???
 
-      def columns: Vector[Field[?]] = self.columns.map(f => {
-        f.copy(modelName = tableName)
-      })
+      def columns: Vector[Field[?]] = self.columns.map(f => f.copy(modelName = tableName))
 
-      override def selectDynamic(name: String): Any = {
+      override def selectDynamic(name: String): Any =
         colMap(name.stripPrefix("field_")).field
-      }
     }).asInstanceOf[self.type]
-  }
 
   def pk: Option[Field[_]] = columns.find(_.primaryKey)
 
@@ -76,34 +68,33 @@ trait Table[T <: Product: Mirror.ProductOf] extends Selectable {
     vs
   }
 
-  def selectDynamic(name: String): Any = {
+  def selectDynamic(name: String): Any =
     colMap(name.stripPrefix("field_")).field
-  }
 
 }
 
 object Table {
 
   inline given derived[A <: Product](using
-      gen: Mirror.ProductOf[A],
-      labelling: Labelling[A],
-      primary: RepeatableAnnotations[Primary, A],
-      index: RepeatableAnnotations[Index, A],
-      unique: RepeatableAnnotations[Unique, A],
-      length: RepeatableAnnotations[Length, A],
-      precision: RepeatableAnnotations[Precision, A],
-      defaultValue: DefaultValue[A],
-      renamesAnn: RepeatableAnnotations[ColumnName, A],
-      tableNameAnn: RepeatableAnnotation[TableName, A],
-      splitAnn: RepeatableAnnotation[SplitTable, A]
+    gen: Mirror.ProductOf[A],
+    labelling: Labelling[A],
+    primary: RepeatableAnnotations[Primary, A],
+    index: RepeatableAnnotations[Index, A],
+    unique: RepeatableAnnotations[Unique, A],
+    length: RepeatableAnnotations[Length, A],
+    precision: RepeatableAnnotations[Precision, A],
+    defaultValue: DefaultValue[A],
+    renamesAnn: RepeatableAnnotations[ColumnName, A],
+    tableNameAnn: RepeatableAnnotation[TableName, A],
+    splitAnn: RepeatableAnnotation[SplitTable, A]
   ): Table[A] = {
-    val defaults        = defaultValue.defaults
-    val columnTypes     =
+    val defaults = defaultValue.defaults
+    val columnTypes =
       summonAll[Tuple.Map[gen.MirroredElemTypes, TField]].toArray.toList
         .asInstanceOf[List[TField[_]]]
     val customTableName = tableNameAnn()
     val split           = splitAnn()
-    val splitTo         = if (split.nonEmpty) { Some(split.head.splitTo) }
+    val splitTo = if (split.nonEmpty) { Some(split.head.splitTo) }
     else None
 
     val tName = if (customTableName.isEmpty) {
@@ -112,7 +103,7 @@ object Table {
       customTableName.head.name
     }
 
-    val primaryKey   = primary().filter(_.nonEmpty)
+    val primaryKey = primary().filter(_.nonEmpty)
     if (primaryKey.length > 1) {
       throw Exception(s"more than 1 primary key in table $tName")
     }
@@ -122,15 +113,13 @@ object Table {
     // scala name
     val scalaFieldNames = labelling.elemLabels.toVector
     // db name
-    val renames         = renamesAnn()
-      .map(col => {
-        if (col.isEmpty) {
-          None
-        } else {
-          Some(col.head.name)
-        }
-      })
-      .toVector
+    val renames = renamesAnn().map { col =>
+      if (col.isEmpty) {
+        None
+      } else {
+        Some(col.head.name)
+      }
+    }.toVector
 
     val dbColNames = renames.zip(scalaFieldNames).map {
       case (rename, oriName) => {
@@ -142,20 +131,20 @@ object Table {
 
     val uniques = unique().map(item => if (item.isEmpty) false else true)
 
-    val len  = length().map(item => if (item.isEmpty) None else Some(item(0).l))
+    val len = length().map(item => if (item.isEmpty) None else Some(item(0).l))
     val prec =
       precision().map(item => if (item.isEmpty) None else Some(item(0)))
 
     val idxes = index().zipWithIndex
       .filter(!_._1.isEmpty)
-      .map(item => {
+      .map { item =>
         item._1.map(i =>
           (
             i.copy(priority = if (i.priority != 0) i.priority else item._2),
             dbColNames(item._2)
           )
         )
-      })
+      }
       .flatten
 
     val groupedIdx = idxes
@@ -202,19 +191,18 @@ object Table {
     result
   }
 
-  transparent inline def apply[T <: Product] = {
+  transparent inline def apply[T <: Product] =
     ${ queryImpl[T] }
-  }
 
   private def queryImpl[T <: Product: Type](using Quotes): Expr[Any] = {
     import quotes.reflect.*
 
-    def recur[mels: Type, mets: Type](baseType: TypeRepr): TypeRepr = {
+    def recur[mels: Type, mets: Type](baseType: TypeRepr): TypeRepr =
       Type.of[mels] match
         case '[mel *: melTail] => {
           Type.of[mets] match {
             case '[head *: tail] => {
-              val label     = Type.valueOfConstant[mel].get.toString
+              val label = Type.valueOfConstant[mel].get.toString
               val withField =
                 Refinement(
                   baseType,
@@ -225,8 +213,7 @@ object Table {
             }
           }
         }
-        case '[EmptyTuple]     => baseType
-    }
+        case '[EmptyTuple] => baseType
     Expr.summon[Mirror.ProductOf[T]].get match {
       case '{
             $m: Mirror.ProductOf[T] {

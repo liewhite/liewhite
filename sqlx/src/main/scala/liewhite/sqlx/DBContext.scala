@@ -7,15 +7,14 @@ import org.jooq.SQLDialect
 import org.jooq.DSLContext
 
 class DBContext(val ds: DBDataSource) {
-  val ctx = new DefaultDSLContext(ds.datasource ,ds.dialect)
+  val ctx = new DefaultDSLContext(ds.datasource, ds.dialect)
 }
 
 object DBContext {
-  def layer: ZLayer[DBDataSource, Nothing, DSLContext] = {
+  def layer: ZLayer[DBDataSource, Nothing, DSLContext] =
     ZLayer {
       for {
         ds <- ZIO.service[DBDataSource]
       } yield DBContext(ds).ctx
     }
-  }
 }

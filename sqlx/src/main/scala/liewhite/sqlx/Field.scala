@@ -20,22 +20,22 @@ import scala.reflect.ClassTag
 import org.jooq.impl.DefaultDataType
 
 case class Field[T](
-    index: Int,
-    modelName: String,
-    // scala case class field name
-    fieldName: String,
-    // database table name
-    primaryKey: Boolean,
-    colName: String,
-    unique: Boolean,
-    default: Option[Any],
-    length: Option[Int],
-    precision: Option[Precision],
-    t: TField[T]) {
+  index: Int,
+  modelName: String,
+  // scala case class field name
+  fieldName: String,
+  // database table name
+  primaryKey: Boolean,
+  colName: String,
+  unique: Boolean,
+  default: Option[Any],
+  length: Option[Int],
+  precision: Option[Precision],
+  t: TField[T]
+) {
 
-  def field: jooq.Field[Object] = {
+  def field: jooq.Field[Object] =
     jooq.impl.DSL.field(fullColName)
-  }
 
   def fullColName: String = Vector(modelName, colName).mkString(".")
   def getValue[A <: Product: Mirror.ProductOf](o: A): T = {
@@ -56,13 +56,9 @@ case class Field[T](
       }
     }
 
-    length.foreach(l => {
-      datatype = datatype.length(l)
-    })
+    length.foreach(l => datatype = datatype.length(l))
 
-    precision.foreach(p => {
-      datatype = datatype.precision(p.precision, p.scale)
-    })
+    precision.foreach(p => datatype = datatype.precision(p.precision, p.scale))
 
     datatype
   }
@@ -70,7 +66,7 @@ case class Field[T](
 
 trait TField[T] {
   // option type with true
-  def nullable: Boolean     = false
+  def nullable: Boolean = false
   // jooq datatype
   def dataType: DataType[T] = innerDataType.nullable(nullable)
   def innerDataType: DataType[T]
@@ -82,13 +78,11 @@ object TField {
     def innerDataType: DataType[Int] =
       SQLDataType.INTEGER.asConvertedDataType(new Converter[Integer, Int] {
 
-        override def from(databaseObject: Integer): Int = {
+        override def from(databaseObject: Integer): Int =
           databaseObject
-        }
 
-        override def to(userObject: Int): Integer = {
+        override def to(userObject: Int): Integer =
           userObject
-        }
 
         override def fromType(): Class[Integer] = classOf[Integer]
 
@@ -101,13 +95,11 @@ object TField {
     def innerDataType: DataType[Long] = SQLDataType.BIGINT.asConvertedDataType(
       new Converter[java.lang.Long, Long] {
 
-        override def from(databaseObject: java.lang.Long): Long = {
+        override def from(databaseObject: java.lang.Long): Long =
           databaseObject
-        }
 
-        override def to(userObject: Long): java.lang.Long = {
+        override def to(userObject: Long): java.lang.Long =
           userObject
-        }
 
         override def fromType(): Class[java.lang.Long] = classOf[java.lang.Long]
 
@@ -162,13 +154,11 @@ object TField {
       SQLDataType.BOOLEAN.asConvertedDataType(
         new Converter[java.lang.Boolean, Boolean] {
 
-          override def from(databaseObject: lang.Boolean): Boolean = {
+          override def from(databaseObject: lang.Boolean): Boolean =
             databaseObject
-          }
 
-          override def to(userObject: Boolean): lang.Boolean = {
+          override def to(userObject: Boolean): lang.Boolean =
             userObject
-          }
 
           override def fromType(): Class[lang.Boolean] = classOf[lang.Boolean]
 
@@ -199,13 +189,11 @@ object TField {
       .NUMERIC(65, 10)
       .asConvertedDataType(new Converter[java.math.BigDecimal, BigDecimal] {
 
-        override def from(databaseObject: java.math.BigDecimal): BigDecimal = {
+        override def from(databaseObject: java.math.BigDecimal): BigDecimal =
           databaseObject
-        }
 
-        override def to(userObject: BigDecimal): java.math.BigDecimal = {
+        override def to(userObject: BigDecimal): java.math.BigDecimal =
           userObject.bigDecimal
-        }
 
         override def fromType(): Class[java.math.BigDecimal] =
           classOf[java.math.BigDecimal]
@@ -219,16 +207,14 @@ object TField {
       SQLDataType.BIGINT.asConvertedDataType(
         new Converter[java.lang.Long, ZonedDateTime] {
 
-          override def from(databaseObject: lang.Long): ZonedDateTime = {
+          override def from(databaseObject: lang.Long): ZonedDateTime =
             ZonedDateTime.ofInstant(
               Instant.ofEpochMilli(databaseObject),
               ZoneId.systemDefault()
             )
-          }
 
-          override def to(userObject: ZonedDateTime): lang.Long = {
+          override def to(userObject: ZonedDateTime): lang.Long =
             userObject.toInstant().toEpochMilli()
-          }
 
           override def fromType(): Class[lang.Long] = classOf[lang.Long]
 
@@ -243,13 +229,11 @@ object TField {
       SQLDataType.BIGINT.asConvertedDataType(
         new Converter[java.lang.Long, ju.Date] {
 
-          override def from(databaseObject: lang.Long): ju.Date = {
+          override def from(databaseObject: lang.Long): ju.Date =
             ju.Date.from(Instant.ofEpochMilli(databaseObject))
-          }
 
-          override def to(userObject: ju.Date): lang.Long = {
+          override def to(userObject: ju.Date): lang.Long =
             userObject.toInstant().toEpochMilli()
-          }
 
           override def fromType(): Class[lang.Long] = classOf[java.lang.Long]
 
@@ -267,20 +251,19 @@ object TField {
   // jooq不支持子类型Convert
   // jooq 内部通过class作为key来查找DataType, 注册Option会查找不到Some和None， 所以都注册一遍
   given opt[T](using t: TField[T]): TField[Option[T]] with {
-    override def nullable: Boolean         = true
+    override def nullable: Boolean = true
     def innerDataType: DataType[Option[T]] = {
       t.dataType
         .asConvertedDataType(new Converter[T, Option[T]] {
-          override def from(databaseObject: T): Option[T] = {
+          override def from(databaseObject: T): Option[T] =
             if (databaseObject != null) {
               Some(t.dataType.getConverter().from(databaseObject.asInstanceOf))
             } else {
               None
             }
-          }
-          override def to(userObject: Option[T]): T       = {
+          override def to(userObject: Option[T]): T = {
             val result = userObject match
-              case None        => null
+              case None => null
               case Some(value) =>
                 t.dataType.getConverter().to(value).asInstanceOf[T]
             result.asInstanceOf[T]
@@ -291,23 +274,21 @@ object TField {
             ft
           }
 
-          override def toType(): Class[Option[T]] = {
+          override def toType(): Class[Option[T]] =
             classOf[Some[T]].asInstanceOf[Class[Option[T]]]
-          }
         })
         .nullable(true)
       t.dataType
         .asConvertedDataType(new Converter[T, Option[T]] {
-          override def from(databaseObject: T): Option[T] = {
+          override def from(databaseObject: T): Option[T] =
             if (databaseObject != null) {
               Some(t.dataType.getConverter().from(databaseObject.asInstanceOf))
             } else {
               None
             }
-          }
-          override def to(userObject: Option[T]): T       = {
+          override def to(userObject: Option[T]): T = {
             val result = userObject match
-              case None        => null
+              case None => null
               case Some(value) =>
                 t.dataType.getConverter().to(value).asInstanceOf[T]
             result.asInstanceOf[T]
@@ -318,24 +299,22 @@ object TField {
             ft
           }
 
-          override def toType(): Class[Option[T]] = {
+          override def toType(): Class[Option[T]] =
             classOf[None.type].asInstanceOf[Class[Option[T]]]
-          }
         })
         .nullable(true)
 
       val result = t.dataType
         .asConvertedDataType(new Converter[T, Option[T]] {
-          override def from(databaseObject: T): Option[T] = {
+          override def from(databaseObject: T): Option[T] =
             if (databaseObject != null) {
               Some(t.dataType.getConverter().from(databaseObject.asInstanceOf))
             } else {
               None
             }
-          }
-          override def to(userObject: Option[T]): T       = {
+          override def to(userObject: Option[T]): T = {
             val result = userObject match
-              case None        => null
+              case None => null
               case Some(value) =>
                 t.dataType.getConverter().to(value).asInstanceOf[T]
             result.asInstanceOf[T]
@@ -346,9 +325,8 @@ object TField {
             ft
           }
 
-          override def toType(): Class[Option[T]] = {
+          override def toType(): Class[Option[T]] =
             classOf[Option[T]].asInstanceOf[Class[Option[T]]]
-          }
         })
         .nullable(true)
       // todo jooq 不支持子类型, 所以Some <: Option 这种就会找不到type
@@ -356,8 +334,9 @@ object TField {
     }
   }
 
-  /** java 基本类型
-    */
+  /**
+   * java 基本类型
+   */
   given TField[Integer] with {
     def innerDataType: DataType[Integer] = SQLDataType.INTEGER
   }
