@@ -1,4 +1,4 @@
-package io.github.liewhite.sqlx
+package liewhite.sqlx
 
 import scala.quoted.*
 import scala.deriving.Mirror

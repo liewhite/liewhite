@@ -1,4 +1,4 @@
-package io.github.liewhite.sqlx
+package liewhite.sqlx
 
 import zio.ZIO
 import zio.ZLayer

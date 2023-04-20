@@ -1,20 +1,20 @@
-package io.github.liewhite.sqlx.examples
+package liewhite.sqlx.examples
 
 import zio.*
 import zio.json.*
-import io.github.liewhite.sqlx.{Table}
+import liewhite.sqlx.{Table}
 import java.sql.SQLException
 import scala.util.Try
-import io.github.liewhite.sqlx.DBDataSource
-import io.github.liewhite.sqlx.DBConfig
+import liewhite.sqlx.DBDataSource
+import liewhite.sqlx.DBConfig
 import javax.sql.DataSource
-import io.github.liewhite.sqlx.TField
+import liewhite.sqlx.TField
 import org.jooq.DataType
 import org.jooq.impl.SQLDataType
 import org.jooq.Converter
 import org.jooq.util.mysql.MySQLDataType
 
-import io.github.liewhite.sqlx.*
+import liewhite.sqlx.*
 
 case class Detail(email: String) derives JsonEncoder, JsonDecoder
 

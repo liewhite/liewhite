@@ -1,4 +1,4 @@
-package io.github.liewhite.sqlx
+package liewhite.sqlx
 
 import java.sql.ResultSet
 import java.sql.PreparedStatement
@@ -15,7 +15,7 @@ import java.lang
 import java.time.Instant
 import java.time.ZoneId
 import java.math.BigInteger
-import io.github.liewhite.sqlx.Precision
+import liewhite.sqlx.Precision
 import scala.reflect.ClassTag
 import org.jooq.impl.DefaultDataType
 

@@ -1,4 +1,4 @@
-package io.github.liewhite.sqlx
+package liewhite.sqlx
 
 import scala.compiletime.*
 import scala.quoted.*
@@ -6,24 +6,14 @@ import scala.deriving.Mirror
 import scala.jdk.CollectionConverters.*
 
 import shapeless3.deriving.{K0, Continue, Labelling}
-import io.github.liewhite.common.{RepeatableAnnotation, RepeatableAnnotations}
-import io.github.liewhite.common.DefaultValue
 
 import org.jooq
 import org.jooq.impl.DSL.*
 
 import zio.ZIO
 import org.jooq.DSLContext
+import liewhite.common.*
 
-import io.github.liewhite.sqlx.{
-  Length,
-  Unique,
-  ColumnName,
-  Precision,
-  Primary,
-  TableName,
-  Index
-}
 class DriverNotSupportError(driver: String)
     extends Exception(s"driver not support: $driver")
 

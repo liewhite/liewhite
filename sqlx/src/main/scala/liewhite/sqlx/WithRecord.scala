@@ -1,4 +1,4 @@
-package io.github.liewhite.sqlx
+package liewhite.sqlx
 import org.jooq
 import org.jooq.impl.DSL
 import scala.deriving.Mirror

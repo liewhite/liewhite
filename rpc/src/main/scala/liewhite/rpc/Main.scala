@@ -34,9 +34,9 @@ object App extends ZIOAppDefault {
       //   .debug("response222: ")
       //   .forever
 
-      // _ <- ZIO.sleep(2.second)
+      _ <- ZIO.sleep(2.second)
     } yield ())
       .provide(Transport.layer(url), RpcClient.layer, RpcServer.layer)
-    x.debug("end of zio")
+    x
   }
 }

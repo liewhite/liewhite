@@ -1,9 +1,9 @@
-package io.github.liewhite.common
+package liewhite.common
 
 import scala.deriving.*
 import scala.quoted.*
 import scala.util.NotGiven
-import io.github.liewhite.common.*
+import liewhite.common.*
 
 
 trait RepeatableAnnotation[A, T] extends Serializable {

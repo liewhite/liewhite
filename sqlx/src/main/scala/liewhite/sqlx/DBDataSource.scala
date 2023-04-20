@@ -1,10 +1,10 @@
-package io.github.liewhite.sqlx
+package liewhite.sqlx
 
 import com.zaxxer.hikari.HikariDataSource
 import zio.ZIO
 import zio.ZLayer
 
-import io.github.liewhite.sqlx.DBDataSource
+import liewhite.sqlx.DBDataSource
 import org.jooq.SQLDialect
 
 case class DBConfig(

@@ -49,9 +49,22 @@ lazy val rpc = project
     libraryDependencies += "com.rabbitmq" % "amqp-client" % "5.17.0"
   )
 
+val zioConfigVersion = "4.0.0-RC14"
+val configDeps = Seq(
+  "dev.zio" %% "zio-config" % zioConfigVersion,
+  "dev.zio" %% "zio-config-magnolia" % zioConfigVersion,
+  "dev.zio" %% "zio-config-yaml" % zioConfigVersion
+)
+lazy val config = project
+  .in(file("config"))
+  .settings(
+    name                                 := "config",
+    libraryDependencies ++= configDeps,
+  )
+
 lazy val root = project
   .in(file("."))
   .settings(
     publish / skip := true
   )
-  .aggregate(sqlx, rpc, common)
+  .aggregate(sqlx, rpc, common,config)

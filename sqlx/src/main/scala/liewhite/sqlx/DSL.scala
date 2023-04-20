@@ -1,4 +1,4 @@
-package io.github.liewhite.sqlx
+package liewhite.sqlx
 
 import scala.compiletime.*
 import scala.quoted.*
@@ -9,7 +9,7 @@ import scala.jdk.CollectionConverters.*
 import org.jooq
 import org.jooq.InsertValuesStepN
 
-import io.github.liewhite.sqlx.DSLMacros
+import liewhite.sqlx.DSLMacros
 
 
 enum JoinType {
