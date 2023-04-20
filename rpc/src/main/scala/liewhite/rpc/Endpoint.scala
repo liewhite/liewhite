@@ -15,7 +15,7 @@ class Endpoint[
 ](route: String) {
   def listen(
     callback: IN => Task[OUT]
-  ): RIO[RpcServer, Unit] =
+  ) =
     for {
       server <- ZIO.service[RpcServer]
       _ <- server.listen(

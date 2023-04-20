@@ -31,19 +31,11 @@ case class RpcFailure(code: Int, internalCode: Int = 0, msg: String = "", data: 
     extends Exception(s"code: $code, msg: $msg data: $data") derives JsonEncoder, JsonDecoder
 
 class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
-  val channel = transport.newChannel()
 
-  def close() =
-    Try(channel.close())
+  val channels = new ConcurrentHashMap[Int, Channel]
 
-  def listen(
-    route: String,
-    callback: Delivery => Task[Array[Byte]],
-    queue: Option[String] = None
-  ): ZIO[Any, Throwable, Fiber.Runtime[Throwable, Unit]] = {
-    val queueName = queue.getOrElse(route)
-
-    val queueDeclare = ZIO.attemptBlocking {
+  def declareQueue(channel: Channel, queueName: String, route: String) =
+    ZIO.attemptBlocking {
       channel.queueDeclare(
         queueName,
         false,
@@ -54,7 +46,8 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
       channel.queueBind(queueName, "amq.direct", route)
     }
 
-    val returnStream = ZStream.asyncScoped[Any, Nothing, Return] { cb =>
+  def returnListener(channel: Channel) =
+    ZStream.asyncScoped[Any, Nothing, Return] { cb =>
       val listener = channel.addReturnListener(msg => cb(ZIO.succeed(Chunk(msg))))
 
       ZIO.acquireRelease(
@@ -67,46 +60,54 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
       )
     }
 
-    val consumeStream =
-      ZStream.asyncScoped[Any, Nothing, Delivery] { cb =>
-        val consumer = channel.basicConsume(
-          queueName,
-          false,
-          new DefaultConsumer(channel) {
-            override def handleDelivery(
-              consumerTag: String,
-              envelope: Envelope,
-              properties: BasicProperties,
-              body: Array[Byte]
-            ): Unit =
-              cb(
-                // ZIO.debug(envelope.toString()) *> ZIO.debug(
-                //   properties.toString()
-                // ) *>
-                ZIO.succeed(Chunk(Delivery(envelope, properties, body)))
-              )
-          }
-        )
+  def consumer(channel: Channel, queueName: String) =
+    ZStream.asyncScoped[Any, Nothing, Delivery] { cb =>
+      val consumer = channel.basicConsume(
+        queueName,
+        false,
+        new DefaultConsumer(channel) {
+          override def handleDelivery(
+            consumerTag: String,
+            envelope: Envelope,
+            properties: BasicProperties,
+            body: Array[Byte]
+          ): Unit =
+            cb(
+              // ZIO.debug(envelope.toString()) *> ZIO.debug(
+              //   properties.toString()
+              // ) *>
+              ZIO.succeed(Chunk(Delivery(envelope, properties, body)))
+            )
+        }
+      )
 
-        ZIO.acquireRelease(
-          ZIO.logInfo(s"[rpc-server] create consumer $route") *>
-            ZIO.succeed(consumer)
-        )(ln =>
-          ZIO.logInfo(s"[rpc-server] remove consumer $route") *>
-            ZIO
-              .succeed(Try(channel.basicCancel(consumer)))
-        )
-      }
+      ZIO.acquireRelease(
+        ZIO.logInfo(s"[rpc-server] create consumer $queueName") *>
+          ZIO.succeed(consumer)
+      )(ln =>
+        ZIO.logInfo(s"[rpc-server] remove consumer $queueName") *>
+          ZIO
+            .succeed(Try(channel.basicCancel(consumer)))
+      )
+    }
+
+  def listen(
+    route: String,
+    callback: Delivery => Task[Array[Byte]],
+    queue: Option[String] = None
+  ): ZIO[Scope, Throwable, Fiber.Runtime[Throwable, Unit]] = {
+    val queueName = queue.getOrElse(route)
 
     (for {
-      _ <- queueDeclare
-      _ <- returnStream
+      channel <- transport.scopedChannel()
+      _       <- declareQueue(channel, queueName, route)
+      _ <- returnListener(channel)
              .runForeach(item =>
                ZIO
                  .logWarning("[rpc-server] response returned, may be client is dead")
              )
              .fork
-      f <- consumeStream.runForeach { msg =>
+      f <- consumer(channel, queueName).runForeach { msg =>
              val process = ZIO
                .attempt(callback(msg))
                .flatten
@@ -132,9 +133,12 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
                    .getProperties()
                    .getReplyTo() != null && msg
                    .getProperties()
-                   .getReplyTo() != ""
+                   .getReplyTo() != "" && msg.getProperties().getHeaders() != null &&
+                   msg.getProperties().getHeaders().get("deliveryTag") != null &&
+                   msg.getProperties().getHeaders().get("deliveryTag").isInstanceOf[Long]
                )(
                  publish(
+                   channel,
                    "",
                    msg.getProperties().getReplyTo(),
                    result,
@@ -143,15 +147,14 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
                      .Builder()
                      .headers(
                        Map(
-                         "deliveryTag" -> msg.getEnvelope().getDeliveryTag()
+                         "deliveryTag" -> msg.getProperties().getHeaders().get("deliveryTag")
                        ).asJava
                      )
                      .build()
                  )
-               ) *> ZIO.attemptBlocking(
+               ) *> ZIO.attemptBlocking {
                  channel.basicAck(msg.getEnvelope().getDeliveryTag(), false)
-               )
-
+               }
              }
            }
              .tapErrorCause(e => ZIO.logError(s"server exit with: $e"))
@@ -161,6 +164,7 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
   }
 
   def publish(
+    channel: Channel,
     exchange: String,
     route: String,
     message: Array[Byte],
@@ -181,7 +185,7 @@ object RpcServer {
       for {
         transport <- ZIO.service[Transport]
         server <-
-          ZIO.acquireRelease(ZIO.succeed(RpcServer(transport)))(s => ZIO.succeed(s.close()).debug("server exit: "))
+          ZIO.acquireRelease(ZIO.succeed(RpcServer(transport)))(s => ZIO.logInfo("server exit: "))
       } yield server
     )
 }

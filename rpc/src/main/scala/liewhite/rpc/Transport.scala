@@ -3,6 +3,7 @@ package liewhite.rpc
 import zio.*
 import com.rabbitmq.client.*
 import zio.concurrent.ConcurrentSet
+import scala.util.Try
 
 class Transport(val connection: Connection) {
   def newChannel(qos: Int = 1) = {
@@ -11,6 +12,16 @@ class Transport(val connection: Connection) {
     channel.basicQos(qos)
     channel
   }
+
+  def scopedChannel(qos: Int = 1) = {
+    val channel = connection.createChannel()
+    channel.confirmSelect()
+    channel.basicQos(qos)
+    ZIO.acquireRelease(ZIO.succeed(channel))(c =>
+      ZIO.logInfo(s"close channel: ${c.getChannelNumber()}") *> ZIO.succeed(Try(c.close())).debug("close channel result: ")
+    )
+  }
+
   def close() = ZIO.succeed(
     connection.close()
   )

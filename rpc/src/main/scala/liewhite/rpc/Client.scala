@@ -162,14 +162,10 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: Stri
                }
 
                ZIO.attempt {
-                 // ZIO.logInfo(
-                 //   s" tags: ${tags.toString()} action: ${r}, requests: ${requests}"
-                 // ) *>
                  ZIO.foreach(tags) { t =>
                    val req = requests.get(t)
                    if (req == null) {
                      // response 可能在ack前到达
-                     // ZIO.logWarning(s"delivery ID not found $r")
                      ZIO.unit
                    } else {
                      r match

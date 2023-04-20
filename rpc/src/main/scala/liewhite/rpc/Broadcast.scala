@@ -13,7 +13,7 @@ class Broadcast[IN: JsonEncoder: JsonDecoder: Schema](route: String) {
   def subscribe(
     queueName: String,
     callback: IN => Task[Unit]
-  ): RIO[RpcServer, Unit] =
+  ) =
     for {
       server <- ZIO.service[RpcServer]
       _ <- server.listen(
