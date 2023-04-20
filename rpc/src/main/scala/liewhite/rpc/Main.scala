@@ -3,11 +3,10 @@ package liewhite.rpc
 import zio.*
 import com.rabbitmq.client.Delivery
 import java.time.ZonedDateTime
-import zio.json.*
-import zio.schema.*
+import liewhite.json.*
 
 import liewhite.rpc.XX
-case class XX(a: Int, b: Option[Boolean] = None) derives JsonDecoder, JsonEncoder, Schema
+case class XX(a: Int, b: Option[Boolean] = None) derives Schema
 
 object App extends ZIOAppDefault {
   val endpoint  = Endpoint[XX, String]("jqk")
@@ -36,7 +35,7 @@ object App extends ZIOAppDefault {
       // _ <- endpoint.send(1)
       // doc <- client.call("jqk.doc", "".getBytes())
       // _   <- Console.printLine(new String(doc))
-      res <- client.call("jqk", XX(1).toJson.getBytes()).flatMap(i => ZIO.logInfo("response:" + String(i)))
+      res <- client.call("jqk", XX(1).toJson.toArray).flatMap(i => ZIO.logInfo("response:" + String(i)))
       _ <- endpoint2
              .call(XX(1)).debug("response: ")
       //   .catchAll(e => ZIO.succeed(e.toString()))

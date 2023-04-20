@@ -11,12 +11,13 @@ import zio.schema.codec.JsonCodec.JsonEncoder
 import zio.schema.codec.JsonCodec.JsonDecoder
 import zio.schema.annotation.*
 
-
 export zio.schema.Schema
 export zio.schema.derived
+export zio.json.ast.Json
 
-extension [T:Schema](s: T) {
-  def toJson = JsonCodec.JsonEncoder.encode(summon[Schema[T]], s)
+extension [T: Schema](s: T) {
+  def toJson    = JsonCodec.JsonEncoder.encode(summon[Schema[T]], s)
+  def toJsonAst = JsonCodec.JsonEncoder.encode(summon[Schema[T]], s).fromJson[Json].toOption.get
 }
 
 extension (s: String) {

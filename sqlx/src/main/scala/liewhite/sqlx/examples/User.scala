@@ -1,8 +1,8 @@
 package liewhite.sqlx.examples
 
 import zio.*
-import zio.json.*
 import liewhite.sqlx.{Table}
+import liewhite.json.*
 import java.sql.SQLException
 import scala.util.Try
 import liewhite.sqlx.DBDataSource
@@ -16,7 +16,7 @@ import org.jooq.util.mysql.MySQLDataType
 
 import liewhite.sqlx.*
 
-case class Detail(email: String) derives JsonEncoder, JsonDecoder
+case class Detail(email: String) derives Schema
 
 object Detail {
   given TField[Detail] with {
@@ -28,7 +28,7 @@ object Detail {
         }
 
         override def to(userObject: Detail): String = {
-          userObject.toJson
+          userObject.toJson.asString
         }
 
         override def fromType(): Class[String] = classOf[String]

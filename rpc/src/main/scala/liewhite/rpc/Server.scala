@@ -2,7 +2,6 @@ package liewhite.rpc
 
 import zio.*
 import zio.concurrent.*
-import zio.json.*
 import com.rabbitmq.client.AMQP
 import com.rabbitmq.client.ConnectionFactory
 import scala.jdk.CollectionConverters.*
@@ -22,13 +21,13 @@ import com.rabbitmq.client.Envelope
 import java.{util => ju}
 import com.rabbitmq.client.Channel
 import scala.util.Try
-import zio.json.ast.Json
-import zio.json.*
+import liewhite.json.*
 
 import liewhite.rpc.Transport
+
 // 返回给调用端的错误
 case class RpcFailure(code: Int, internalCode: Int = 0, msg: String = "", data: Json = Json.Null)
-    extends Exception(s"code: $code, msg: $msg data: $data") derives JsonEncoder, JsonDecoder
+    extends Exception(s"code: $code, msg: $msg data: $data") derives Schema
 
 class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
 
@@ -113,7 +112,7 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
                .flatten
                .catchSome {
                  case e: RpcFailure => {
-                   ZIO.succeed(e.toJson.getBytes)
+                   ZIO.succeed(e.toJson.toArray)
                  }
                }
                .catchAllCause { e =>
@@ -122,8 +121,8 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
                      500,
                      0,
                      "internal error",
-                     Json.Str(e.toString())
-                   ).toJson.getBytes()
+                     e.toString().toJsonAst
+                   ).toJson.toArray
                  )
                }
 

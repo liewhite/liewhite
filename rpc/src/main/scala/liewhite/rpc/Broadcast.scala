@@ -2,14 +2,11 @@ package liewhite.rpc
 
 import com.rabbitmq.client.AMQP
 import zio.*
-import zio.json.*
+import liewhite.json.*
 import com.rabbitmq.client.Delivery
+import liewhite.rpc.*
 
-import liewhite.rpc.RpcClient
-import liewhite.rpc.{RpcFailure, RpcServer}
-import zio.schema.Schema
-
-class Broadcast[IN: JsonEncoder: JsonDecoder: Schema](route: String) {
+class Broadcast[IN: Schema](route: String) {
   def subscribe(
     queueName: String,
     callback: IN => Task[Unit]
@@ -22,9 +19,9 @@ class Broadcast[IN: JsonEncoder: JsonDecoder: Schema](route: String) {
                for {
                  body <- ZIO
                            .fromEither(String(req.getBody()).fromJson[IN])
-                           .mapError(err => RpcFailure(400, 0, err))
+                           .mapError(err => RpcFailure(400, 0, err.toString()))
                  _  <- callback(body)
-                 ser = Array.emptyByteArray.toJson.getBytes()
+                 ser = Array.emptyByteArray
                } yield ser
              },
              Some(queueName)
@@ -45,7 +42,7 @@ class Broadcast[IN: JsonEncoder: JsonDecoder: Schema](route: String) {
   def broadcast(req: IN): ZIO[RpcClient, Throwable, Unit] =
     for {
       client <- ZIO.service[RpcClient]
-      res    <- client.send(route, req.toJson.getBytes)
+      res    <- client.send(route, req.toJson.toArray)
     } yield res
 
 }

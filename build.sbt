@@ -20,8 +20,8 @@ val zioSchemaDeps = Seq(
 lazy val json = project
   .in(file("json"))
   .settings(
-    name                                   := "common",
-    libraryDependencies ++= zioSchemaDeps,
+    name := "json",
+    libraryDependencies ++= zioSchemaDeps
   )
 
 lazy val common = project
@@ -45,12 +45,12 @@ lazy val sqlx = project
     libraryDependencies += "org.jooq"       % "jooq-meta"            % "3.17.7",
     libraryDependencies += "com.zaxxer"     % "HikariCP"             % "5.0.1"
   )
-  .dependsOn(common,json)
+  .dependsOn(json,common)
 
 val rpcZioDeps = Seq(
   "dev.zio" %% "zio"            % zioVersion,
   "dev.zio" %% "zio-concurrent" % zioVersion,
-  "dev.zio" %% "zio-streams"    % zioVersion,
+  "dev.zio" %% "zio-streams"    % zioVersion
 )
 
 lazy val rpc = project
@@ -60,7 +60,8 @@ lazy val rpc = project
     libraryDependencies ++= rpcZioDeps,
     libraryDependencies ++= zioSchemaDeps,
     libraryDependencies += "com.rabbitmq" % "amqp-client" % "5.17.0"
-  ).dependsOn(common,json)
+  )
+  .dependsOn(common, json)
 
 val zioConfigVersion = "4.0.0-RC14"
 val configDeps = Seq(
@@ -80,4 +81,4 @@ lazy val root = project
   .settings(
     publish / skip := true
   )
-  .aggregate(sqlx, rpc, common, config,json)
+  .aggregate(sqlx, rpc, common, config, json)

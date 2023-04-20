@@ -2,16 +2,15 @@ package liewhite.rpc
 
 import com.rabbitmq.client.AMQP
 import zio.*
-import zio.json.*
 import com.rabbitmq.client.Delivery
 
+import liewhite.json.*
 import liewhite.rpc.RpcClient
 import liewhite.rpc.{RpcFailure, RpcServer}
-import zio.schema.Schema
 
 class Endpoint[
-  IN: JsonEncoder: JsonDecoder: Schema,
-  OUT: JsonEncoder: JsonDecoder: Schema
+  IN: Schema,
+  OUT: Schema
 ](route: String) {
   def listen(
     callback: IN => Task[OUT]
@@ -24,9 +23,9 @@ class Endpoint[
                for {
                  body <- ZIO
                            .fromEither(String(req.getBody()).fromJson[IN])
-                           .mapError(err => RpcFailure(400, 0, err))
+                           .mapError(err => RpcFailure(400, 0, err.toString()))
                  res <- callback(body)
-                 ser  = res.toJson.getBytes()
+                 ser  = res.toJson.toArray
                } yield ser
              }
            )
@@ -51,7 +50,7 @@ class Endpoint[
     for {
       client <- ZIO.service[RpcClient]
       res <- client
-               .call(route, req.toJson.getBytes)
+               .call(route, req.toJson.toArray)
                .mapError(e => RpcFailure(500, 1, s"failed send request : $e"))
       out <- ZIO
                .fromEither(new String(res).fromJson[OUT]) // 尝试decode
@@ -59,7 +58,7 @@ class Endpoint[
                  new String(res)
                    .fromJson[RpcFailure]
                    .toOption
-                   .getOrElse(RpcFailure(500, 0, e)) // 按错误进行decode
+                   .getOrElse(RpcFailure(500, 0, e.toString)) // 按错误进行decode
                }
     } yield out
 
@@ -67,7 +66,7 @@ class Endpoint[
     for {
       client <- ZIO.service[RpcClient]
       _ <- client
-             .send(route, req.toJson.getBytes)
+             .send(route, req.toJson.toArray)
              .mapError(e => RpcFailure(500, 1, s"failed send request : $e"))
     } yield ()
 }
