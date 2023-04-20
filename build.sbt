@@ -15,13 +15,13 @@ lazy val common = project
   .in(file("common"))
   .settings(
     name                                   := "common",
-    libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test,
+    libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
   )
 
 lazy val sqlx = project
   .in(file("sqlx"))
   .settings(
-    name                                        := "sqlx",
+    name                                   := "sqlx",
     libraryDependencies += "org.typelevel" %% "shapeless3-deriving" % "3.0.3",
     libraryDependencies += "org.jetbrains"  % "annotations"         % "23.0.0",
     libraryDependencies += "dev.zio" %% "zio"                  % zioVersion,
@@ -30,28 +30,28 @@ lazy val sqlx = project
     libraryDependencies += "org.postgresql" % "postgresql" % "42.3.3",
     libraryDependencies += "org.jooq"       % "jooq"       % "3.17.7",
     libraryDependencies += "org.jooq"       % "jooq-meta"  % "3.17.7",
-    libraryDependencies += "com.zaxxer"     % "HikariCP"   % "5.0.1",
-  ).dependsOn(common)
+    libraryDependencies += "com.zaxxer"     % "HikariCP"   % "5.0.1"
+  )
+  .dependsOn(common)
 
 val rpcZioDeps = Seq(
-  "dev.zio" %% "zio" % zioVersion,
+  "dev.zio" %% "zio"            % zioVersion,
   "dev.zio" %% "zio-concurrent" % zioVersion,
-  "dev.zio" %% "zio-streams" % zioVersion,
-  "dev.zio" %% "zio-json" % zioJsonVersion,
+  "dev.zio" %% "zio-streams"    % zioVersion,
+  "dev.zio" %% "zio-json"       % zioJsonVersion
 )
 
 lazy val rpc = project
   .in(file("rpc"))
   .settings(
-    name                                        := "rpc",
+    name                                 := "rpc",
     libraryDependencies ++= rpcZioDeps,
-    libraryDependencies += "com.rabbitmq" % "amqp-client" % "5.17.0",
+    libraryDependencies += "com.rabbitmq" % "amqp-client" % "5.17.0"
   )
-
 
 lazy val root = project
   .in(file("."))
   .settings(
-    publish / skip := true,
+    publish / skip := true
   )
-  .aggregate(sqlx,rpc,common)
+  .aggregate(sqlx, rpc, common)
