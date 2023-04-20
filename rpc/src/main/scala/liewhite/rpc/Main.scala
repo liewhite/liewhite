@@ -12,27 +12,29 @@ object App extends ZIOAppDefault {
   def run = {
     val x = (for {
       // client <- ZIO.service[RpcClient]
-      // _ <- endpoint.listen(i => ZIO.succeed("x"))
+      _ <- endpoint.listen(i => ZIO.logInfo(i.toString()) *> ZIO.succeed("x"))
       // _ <- broadcast.subscribe(
       //   "i-o",
       //   i => {
       //     ZIO.debug("xxxx" + i.toString())
       //   }
       // )
-      _ <- broadcast.subscribe(
-        "i-o",
-        i => {
-          ZIO.debug("yyyy" + i.toString())
-        }
-      )
-      result <- ZIO.foreachPar(1 to 100)(i => broadcast.broadcast(i)).debug
-      // _ <- ZIO.sleep(2.second)
+      // _ <- broadcast.subscribe(
+      //   "i-o",
+      //   i => {
+      //     ZIO.debug("yyyy" + i.toString())
+      //   }
+      // )
+      // result <- ZIO.foreachPar(1 to 100)(i => broadcast.broadcast(i)).debug
+      _ <- endpoint.send(1)
       // res <- client.call("jqka", "xxx".getBytes()).debug
       // _ <- endpoint
       //   .call(123)
       //   .catchAll(e => ZIO.succeed(e.toString()))
       //   .debug("response222: ")
       //   .forever
+
+      // _ <- ZIO.sleep(2.second)
     } yield ())
       .provide(Transport.layer(url), RpcClient.layer, RpcServer.layer)
     x.debug("end of zio")

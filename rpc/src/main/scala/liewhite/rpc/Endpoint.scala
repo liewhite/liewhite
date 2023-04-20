@@ -49,4 +49,14 @@ class Endpoint[IN: JsonEncoder: JsonDecoder, OUT: JsonEncoder: JsonDecoder](
     } yield out
   }
 
+  def send(req: IN): ZIO[RpcClient, RpcFailure, Unit] = {
+    for {
+      client <- ZIO.service[RpcClient]
+      _ <- client
+        .send(route, req.toJson.getBytes)
+        .mapError(e => {
+          RpcFailure(500, 1, s"failed send request : $e")
+        })
+    } yield ()
+  }
 }
