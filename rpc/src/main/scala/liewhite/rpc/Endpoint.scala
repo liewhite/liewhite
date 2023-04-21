@@ -46,11 +46,11 @@ class Endpoint[
            )
     } yield ()
 
-  def call(req: IN): ZIO[RpcClient, RpcFailure, OUT] =
+  def call(req: IN, timeout: Duration = 30.second): ZIO[RpcClient, RpcFailure, OUT] =
     for {
       client <- ZIO.service[RpcClient]
       res <- client
-               .call(route, req.toJson.toArray)
+               .call(route, req.toJson.toArray, timeout = timeout)
                .mapError(e => RpcFailure(500, 1, s"failed send request : $e"))
       out <- ZIO
                .fromEither(new String(res).fromJson[OUT]) // 尝试decode
