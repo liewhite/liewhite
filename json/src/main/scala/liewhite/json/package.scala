@@ -53,3 +53,5 @@ given Schema[Json] = dynamicSchema.transformOrFail(
     s
   }
 )
+
+given [T](using l: Schema[List[T]]): Schema[Seq[T]] = l.transform(l => l.toSeq, s => s.toList)
