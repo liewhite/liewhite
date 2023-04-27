@@ -34,7 +34,7 @@ object MyApp extends ZIOAppDefault {
       user2     <- User(0, Some(key), "kakaka2", Detail("jqk")).toRecord
       user3     <- User(0, Some(key), "kakaka3", Detail("jqk")).toRecord
       _ <- ZIO.attempt {
-             ctx.insertInto(q.table).columns(q.jooqCols*).valuesOfRecords(Vector(user1, user2, user3)*).execute()
+             ctx.insertInto(q.table).columns(q.jooqCols*).valuesOfRecords(user1, user2, user3).execute()
              val result = ctx.select(q.field_age, q.field_detail).from(q.table).fetch()
              println(result.as[OK])
              println(result.as[(Option[Long], Detail)])
