@@ -15,6 +15,7 @@ import org.jooq.Converter
 import org.jooq.util.mysql.MySQLDataType
 
 import liewhite.sqlx.*
+import java.time.ZonedDateTime
 
 case class Detail(email: String) derives Schema
 
@@ -58,5 +59,6 @@ case class User(
   @Index("kakak") kakaka: String,
   @ColumnName("details")
   @Length(100)
-  detail: Detail = Detail("xxxx")
+  detail: Detail = Detail("xxxx"),
+  time: ZonedDateTime = ZonedDateTime.now()
 )
