@@ -26,7 +26,7 @@ object MyApp extends ZIOAppDefault {
     val config = DBConfig("mysql", "localhost", "root", "test")
 
     val key = 1233
-    val q   = Table[User].splitWith(key)
+    val q   = Table[User].tableBySplitKey(key)
     (for {
       migResult <- Migration.Migrate[User]
       ctx       <- ZIO.service[org.jooq.DSLContext]

@@ -35,7 +35,7 @@ trait Table[T <: Product: Mirror.ProductOf] extends Selectable {
 
   def table: jooq.Table[org.jooq.Record] = jooq.impl.DSL.table(tableName)
 
-  def splitWith(key: Long): self.type =
+  def tableBySplitKey(key: Long): self.type =
     (new Table[T] {
       def tableName: String = {
         val split   = self.splitCount.get
