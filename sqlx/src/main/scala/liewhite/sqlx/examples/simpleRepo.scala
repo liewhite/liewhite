@@ -21,23 +21,24 @@ case class OK(
   a: Option[Long],
   b: Detail
 )
+
 object MyApp extends ZIOAppDefault {
   def run = {
-    val config = DBConfig("mysql", "localhost", "root", "test")
+    val config = DBConfig("mysql", "localhost", "root", "test", password = Some("123"))
 
     val key = 1233
     val q   = Table[User].tableBySplitKey(key)
     (for {
       migResult <- Migration.Migrate[User]
       ctx       <- ZIO.service[org.jooq.DSLContext]
-      user1     <- User(0, Some(key), "kakaka1", Detail("jqk")).toRecord
-      user2     <- User(0, Some(key), "kakaka2", Detail("jqk")).toRecord
-      user3     <- User(0, Some(key), "kakaka3", Detail("jqk")).toRecord
+      user1     <- User(0, Some(key), O("oo"),EE.EE1, "kakaka1", Detail("jqk")).toRecord
+      user2     <- User(0, Some(key), O("oo"), EE.EE2,"kakaka2", Detail("jqk")).toRecord
+      user3     <- User(0, Some(key), O("oo"), EE.EE3,"kakaka3", Detail("jqk")).toRecord
       _ <- ZIO.attempt {
              ctx.insertInto(q.table).columns(q.jooqCols*).valuesOfRecords(user1, user2, user3).execute()
-             val result = ctx.select(q.field_age, q.field_detail).from(q.table).fetch()
-             println(result.as[OK])
-             println(result.as[(Option[Long], Detail)])
+             val result = ctx.select(q.jooqCols*).from(q.table).fetch()
+             println(result.as[User])
+            //  println(result.as[(Option[Long], Detail)])
            }
     } yield ()).provide(
       ZLayer.succeed(config),
