@@ -27,7 +27,7 @@ class DBDataSource(val config: DBConfig) {
     } else if (config.`type` == "postgresql") {
       5432
     } else {
-      throw Exception("not support db:" + config.`type`)
+      throw Exception("must provide port for :" + config.`type`)
     }
   )
   val dialect: SQLDialect =
@@ -47,16 +47,10 @@ class DBDataSource(val config: DBConfig) {
   datasource.setMaximumPoolSize(config.maxConnection)
   datasource.setMinimumIdle(config.minIdle)
   datasource.setIdleTimeout(config.idleMills)
-  if (config.password.isDefined) {
-    datasource.setPassword(config.password.get)
-  }
+  config.password.foreach(datasource.setPassword(_))
 }
 
 object DBDataSource {
   def layer: ZLayer[DBConfig, Nothing, DBDataSource] =
-    ZLayer {
-      for {
-        config <- ZIO.service[DBConfig]
-      } yield DBDataSource(config)
-    }
+    ZLayer(ZIO.service[DBConfig].map(DBDataSource(_)))
 }

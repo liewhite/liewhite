@@ -5,7 +5,6 @@ import java.sql.PreparedStatement
 import java.sql.SQLException
 import org.jooq.*
 import org.jooq
-import org.jooq.impl.BuiltInDataType
 import org.jooq.impl.SQLDataType
 import java.time.LocalDateTime
 import java.time.ZonedDateTime
@@ -17,7 +16,6 @@ import java.time.ZoneId
 import java.math.BigInteger
 import liewhite.sqlx.Precision
 import scala.reflect.ClassTag
-import org.jooq.impl.DefaultDataType
 
 case class Field[T](
   index: Int,

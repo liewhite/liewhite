@@ -9,10 +9,6 @@ import liewhite.sqlx.DBDataSource
 import liewhite.sqlx.DBConfig
 import javax.sql.DataSource
 import liewhite.sqlx.TField
-import org.jooq.DataType
-import org.jooq.impl.SQLDataType
-import org.jooq.Converter
-import org.jooq.util.mysql.MySQLDataType
 
 import liewhite.sqlx.*
 import java.time.ZonedDateTime

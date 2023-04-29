@@ -4,11 +4,8 @@ import org.jooq
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import org.jooq.impl.DSL
-import org.jooq.impl.SQLDataType
-import org.jooq.impl.DSL.*
 import zio.ZIO
 import scala.util.*
-import org.jooq.DataType
 import zio.Unsafe
 import zio.Task
 import java.sql.Connection
@@ -76,7 +73,7 @@ object Migration {
         if (item.unique) {
           jooqConn
             .alterTable(tableName)
-            .add(constraint(item.uniqueKeyName).unique(item.colName))
+            .add(DSL.constraint(item.uniqueKeyName).unique(item.colName))
             .execute
         }
       }
@@ -154,14 +151,14 @@ object Migration {
       (defineUniques -- currentUniques).foreach { item =>
         jooqConn
           .alterTable(tableName)
-          .add(constraint(item).unique(item.stripPrefix("uk:")))
+          .add(DSL.constraint(item).unique(item.stripPrefix("uk:")))
           .execute
       }
       (currentUniques -- defineUniques).foreach { item =>
         if (item.startsWith("uk:")) {
           jooqConn
             .alterTable(tableName)
-            .drop(constraint(item).unique(item.stripPrefix("uk:")))
+            .drop(DSL.constraint(item).unique(item.stripPrefix("uk:")))
             .execute
         }
       }

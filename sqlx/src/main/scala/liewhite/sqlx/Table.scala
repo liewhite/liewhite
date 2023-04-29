@@ -8,10 +8,9 @@ import scala.jdk.CollectionConverters.*
 import shapeless3.deriving.{K0, Continue, Labelling}
 
 import org.jooq
-import org.jooq.impl.DSL.*
+import org.jooq.impl.DSL
 
 import zio.ZIO
-import org.jooq.DSLContext
 import liewhite.common.*
 
 class DriverNotSupportError(driver: String) extends Exception(s"driver not support: $driver")
@@ -56,7 +55,7 @@ trait Table[T <: Product: Mirror.ProductOf] extends Selectable {
   def pk: Option[Field[_]] = columns.find(_.primaryKey)
 
   def jooqCols: Vector[org.jooq.Field[Object]] =
-    columns.map(item => field(item.colName))
+    columns.map(item => DSL.field(item.colName))
 
   def fields: Vector[org.jooq.Field[Object]] = jooqCols
 

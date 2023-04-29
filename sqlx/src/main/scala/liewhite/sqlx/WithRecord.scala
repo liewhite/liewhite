@@ -1,15 +1,14 @@
 package liewhite.sqlx
+
 import org.jooq
 import org.jooq.impl.DSL
 import scala.deriving.Mirror
 import scala.util.Try
-import org.jooq.Result
 import scala.jdk.CollectionConverters.*
 import zio.*
 import scala.compiletime.summonAll
 
 import shapeless3.deriving.Labelling
-import org.jooq.DSLContext
 
 trait FromRecord[T] {
   def fromRecord(record: jooq.Record): Either[Throwable, T]
@@ -60,7 +59,7 @@ extension [R <: jooq.Record](record: R) {
     t.fromRecord(record)
 }
 
-extension [R <: jooq.Record](records: Result[R]) {
+extension [R <: jooq.Record](records: jooq.Result[R]) {
   def as[T](using t: FromRecord[T]): Vector[Either[Throwable, T]] =
     records.asScala.map(i => t.fromRecord(i)).toVector
 }
