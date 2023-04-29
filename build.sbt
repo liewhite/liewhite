@@ -10,11 +10,12 @@ ThisBuild / sonatypeRepository     := "https://s01.oss.sonatype.org/service/loca
 
 val zioVersion     = "2.0.13"
 val zioJsonVersion = "0.5.0"
+val zioSchemaVersion = "0.4.11"
 
 val zioSchemaDeps = Seq(
-  "dev.zio" %% "zio-schema"            % "0.4.10",
-  "dev.zio" %% "zio-schema-json"       % "0.4.10",
-  "dev.zio" %% "zio-schema-derivation" % "0.4.10"
+  "dev.zio" %% "zio-schema"            % zioSchemaVersion,
+  "dev.zio" %% "zio-schema-json"       % zioSchemaVersion,
+  "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion
 )
 
 lazy val json = project
@@ -39,10 +40,10 @@ lazy val sqlx = project
     name                                   := "sqlx",
     libraryDependencies += "org.jetbrains"  % "annotations"          % "23.0.0",
     libraryDependencies += "dev.zio"       %% "zio"                  % zioVersion,
-    libraryDependencies += "mysql"          % "mysql-connector-java" % "8.0.28",
-    libraryDependencies += "org.postgresql" % "postgresql"           % "42.3.3",
-    libraryDependencies += "org.jooq"       % "jooq"                 % "3.17.7",
-    libraryDependencies += "org.jooq"       % "jooq-meta"            % "3.17.7",
+    libraryDependencies += "mysql"          % "mysql-connector-java" % "8.0.33",
+    libraryDependencies += "org.postgresql" % "postgresql"           % "42.6.0",
+    libraryDependencies += "org.jooq"       % "jooq"                 % "3.18.3",
+    libraryDependencies += "org.jooq"       % "jooq-meta"            % "3.18.3",
     libraryDependencies += "com.zaxxer"     % "HikariCP"             % "5.0.1"
   )
   .dependsOn(json,common)
@@ -75,6 +76,18 @@ lazy val config = project
     name := "config",
     libraryDependencies ++= configDeps
   )
+
+val traderDeps = Seq(
+  "com.softwaremill.sttp.client3" %% "core" % "3.6.2",
+  "com.softwaremill.sttp.client3" %% "okhttp-backend" % "3.6.2"
+)
+
+lazy val binance = project
+  .in(file("binance"))
+  .settings(
+    name := "binance",
+    libraryDependencies ++= traderDeps
+  ).dependsOn(json, config)
 
 lazy val root = project
   .in(file("."))

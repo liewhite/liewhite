@@ -31,13 +31,13 @@ object MyApp extends ZIOAppDefault {
     (for {
       migResult <- Migration.Migrate[User]
       ctx       <- ZIO.service[org.jooq.DSLContext]
-      user1     <- User(0, Some(key), O("oo"),EE.EE1, "kakaka1", Detail("jqk")).toRecord
+      user1     <- User(0, Some(key), O("oo1111"),EE.EE1, "kakaka1", Detail("jqk")).toRecord
       user2     <- User(0, Some(key), O("oo"), EE.EE2,"kakaka2", Detail("jqk")).toRecord
       user3     <- User(0, Some(key), O("oo"), EE.EE3,"kakaka3", Detail("jqk")).toRecord
       _ <- ZIO.attempt {
              ctx.insertInto(q.table).columns(q.jooqCols*).valuesOfRecords(user1, user2, user3).execute()
              val result = ctx.select(q.jooqCols*).from(q.table).fetch()
-             println(result.as[User])
+             result.as[User].foreach(println)
             //  println(result.as[(Option[Long], Detail)])
            }
     } yield ()).provide(
