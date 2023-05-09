@@ -8,8 +8,8 @@ ThisBuild / publishTo              := sonatypePublishToBundle.value
 sonatypeCredentialHost             := "s01.oss.sonatype.org"
 ThisBuild / sonatypeRepository     := "https://s01.oss.sonatype.org/service/local"
 
-val zioVersion     = "2.0.13"
-val zioJsonVersion = "0.5.0"
+val zioVersion       = "2.0.13"
+val zioJsonVersion   = "0.5.0"
 val zioSchemaVersion = "0.4.11"
 
 val zioSchemaDeps = Seq(
@@ -30,6 +30,7 @@ lazy val common = project
   .settings(
     name                                   := "common",
     libraryDependencies += "org.typelevel" %% "shapeless3-deriving" % "3.3.0",
+    libraryDependencies += "dev.zio"       %% "zio"                 % zioVersion,
     libraryDependencies ++= zioSchemaDeps,
     libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
   )
@@ -46,7 +47,7 @@ lazy val sqlx = project
     libraryDependencies += "org.jooq"       % "jooq-meta"            % "3.18.3",
     libraryDependencies += "com.zaxxer"     % "HikariCP"             % "5.0.1"
   )
-  .dependsOn(json,common)
+  .dependsOn(json, common)
 
 val rpcZioDeps = Seq(
   "dev.zio" %% "zio"            % zioVersion,
@@ -77,21 +78,26 @@ lazy val config = project
     libraryDependencies ++= configDeps
   )
 
-val traderDeps = Seq(
-  "com.softwaremill.sttp.client3" %% "core" % "3.6.2",
+val okHttpDeps = Seq(
+  "com.softwaremill.sttp.client3" %% "core"           % "3.6.2",
   "com.softwaremill.sttp.client3" %% "okhttp-backend" % "3.6.2"
 )
+val web3jDeps = Seq(
+  "org.web3j" % "core" % "4.9.8"
+)
 
-lazy val binance = project
-  .in(file("binance"))
+lazy val ethers = project
+  .in(file("ethers"))
   .settings(
-    name := "binance",
-    libraryDependencies ++= traderDeps
-  ).dependsOn(json, config)
+    name := "ethers",
+    libraryDependencies ++= okHttpDeps,
+    libraryDependencies ++= web3jDeps
+  )
+  .dependsOn(common, json)
 
 lazy val root = project
   .in(file("."))
   .settings(
     publish / skip := true
   )
-  .aggregate(sqlx, rpc, common, config, json)
+  .aggregate(sqlx, rpc, common, config, json, ethers)
