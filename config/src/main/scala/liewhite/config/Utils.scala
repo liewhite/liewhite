@@ -11,7 +11,9 @@ import zio.config.yaml.*
 
 def loadConfig[T: DeriveConfig](
   path: String = "conf/config.yaml"
-): IO[Config.Error, T] =
-  ConfigProvider
-    .fromYamlFile(new File(path))
-    .load(deriveConfig[T])
+): IO[Throwable, T] =
+  ZIO.attempt {
+    ConfigProvider
+      .fromYamlFile(new File(path))
+      .load(deriveConfig[T])
+  }.flatten
