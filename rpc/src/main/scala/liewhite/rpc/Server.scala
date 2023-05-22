@@ -107,7 +107,7 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
              )
              .fork
       f <- consumer(channel, queueName).runForeach { msg =>
-             val process = ZIO
+             val process = ZIO.logInfo(s"[$route] [$queue] ${msg.getBody()}") *> ZIO
                .attempt(callback(msg))
                .flatten
                .catchSome {
