@@ -18,17 +18,19 @@ object App extends ZIOAppDefault {
   def run = {
     val x = ZIO.scoped(for {
       client <- ZIO.service[RpcClient]
-      _      <- endpoint.listen(i => ZIO.logInfo(i.toString()) *> ZIO.succeed("x1"))
+      _      <- endpoint.listen(i => ZIO.fail(EndpointException(400, 400, "failed")))
       _      <- endpoint2.listen(i => ZIO.logInfo(i.toString()) *> ZIO.succeed("x2"))
       _ <- broadcast.subscribe(
         "i-o",
         i => {
+          throw Exception("xxxx")
           ZIO.logInfo("xxxx" + i.toString())
         }
       )
       _ <- broadcast.subscribe(
         "i-o2",
         i => {
+          ZIO.fail(Exception("yyyyy")) *>
           ZIO.logInfo("yyyy" + i.toString())
         }
       )
@@ -44,7 +46,7 @@ object App extends ZIOAppDefault {
       //          .fork
 
       _ <- endpoint
-             .call(XX(1), timeout = 30.second)
+             .call(XX(1), timeout = 30.second).catchAllCause(e => ZIO.succeed(e.toString()))
              .debug("response: ").schedule(Schedule.fixed(1.second))
              .fork
       _ <- endpoint2
