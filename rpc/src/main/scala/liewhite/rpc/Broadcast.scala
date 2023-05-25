@@ -19,10 +19,10 @@ class Broadcast[IN: Schema](route: String) {
                for {
                  body <- ZIO
                            .fromEither(String(req.getBody()).fromJson[IN])
-                           .mapError(err => RpcFailure(400, 0, err.toString()))
-                 _  <- callback(body)
-                 ser = Array.emptyByteArray
-               } yield ser
+                           .mapError(err => EndpointException(400, 0, err.toString()))
+                 _ <- ZIO
+                        .attemptBlocking(callback(body)).flatten
+               } yield ""
              },
              Some(queueName)
            )
@@ -33,7 +33,7 @@ class Broadcast[IN: Schema](route: String) {
                ZIO.succeed(
                  s"""|IN:
                      |${in.ast}
-                     |""".stripMargin.getBytes()
+                     |""".stripMargin
                )
              }
            )

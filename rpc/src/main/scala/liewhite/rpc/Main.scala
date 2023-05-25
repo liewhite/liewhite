@@ -18,21 +18,21 @@ object App extends ZIOAppDefault {
   def run = {
     val x = ZIO.scoped(for {
       client <- ZIO.service[RpcClient]
-      _      <- endpoint.listen(i => ZIO.logInfo(i.toString()) *> ZIO.succeed("x"))
-      _      <- endpoint2.listen(i => ZIO.logInfo(i.toString()) *> ZIO.succeed("x"))
+      _      <- endpoint.listen(i => ZIO.logInfo(i.toString()) *> ZIO.succeed("x1"))
+      _      <- endpoint2.listen(i => ZIO.logInfo(i.toString()) *> ZIO.succeed("x2"))
       _ <- broadcast.subscribe(
         "i-o",
         i => {
-          ZIO.debug("xxxx" + i.toString())
+          ZIO.logInfo("xxxx" + i.toString())
         }
       )
       _ <- broadcast.subscribe(
-        "i-o",
+        "i-o2",
         i => {
-          ZIO.debug("yyyy" + i.toString())
+          ZIO.logInfo("yyyy" + i.toString())
         }
       )
-      _ <- broadcast.broadcast(1).forever.fork
+      _ <- broadcast.broadcast(1).schedule(Schedule.fixed(1.second)).fork
       // result <- ZIO.foreachPar(1 to 100)(i => broadcast.broadcast(i)).debug
       // _ <- endpoint.send(1)
       // doc <- client.call("jqk.doc", "".getBytes())
@@ -43,11 +43,14 @@ object App extends ZIOAppDefault {
       //          .forever
       //          .fork
 
-      // _ <- endpoint
-      //        .call(XX(1), timeout = 30.second)
-      //        .debug("response: ")
-      //        .forever
-      //        .fork
+      _ <- endpoint
+             .call(XX(1), timeout = 30.second)
+             .debug("response: ").schedule(Schedule.fixed(1.second))
+             .fork
+      _ <- endpoint2
+             .call(XX(1), timeout = 30.second)
+             .debug("response: ").schedule(Schedule.fixed(1.second))
+             .fork
       //   .catchAll(e => ZIO.succeed(e.toString()))
       //   .debug("response222: ")
       //   .forever

@@ -13,7 +13,10 @@ import com.rabbitmq.client.AMQP.Confirm
 import com.rabbitmq.client.AMQP.Basic.Deliver
 import com.rabbitmq.utility.BlockingCell
 
+import liewhite.json.{given, *}
+
 import liewhite.rpc.Transport
+
 // rpc 内部错误
 class RpcException(msg: String) extends Exception(msg)
 
@@ -207,11 +210,11 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: Stri
 
   def call(
     route: String,
-    message: Array[Byte],
+    message: String,
     mandatory: Boolean = true,
     props: AMQP.BasicProperties = AMQP.BasicProperties(),
     timeout: Duration = 30.second
-  ): Task[Array[Byte]] = {
+  ): ZIO[Any, Throwable, RpcResponse] = {
     val lockedScope =
       ZIO.scoped(
         for {
@@ -228,7 +231,7 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: Stri
                })
           _ <- ZIO.attemptBlocking {
                  channel
-                   .basicPublish(exchange, route, mandatory, newProps, message)
+                   .basicPublish(exchange, route, mandatory, newProps, message.getBytes())
                }
         } yield tag
       )
@@ -240,7 +243,11 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: Stri
         cleanTask <- ZIO.acquireRelease(ZIO.succeed(tag))(t => ZIO.succeed(requests.remove(t)))
         response <- waitForResponse(tag)
                       .timeoutFail(TimeoutException(route))(timeout)
-      } yield response.getBody()
+        parsedBody <- ZIO
+                        .fromEither(String(response.getBody()).fromJson[RpcResponse])
+                        .mapError(err => RpcException("protocol err: " + err.toString()))
+        
+      } yield parsedBody
     }
   }
 

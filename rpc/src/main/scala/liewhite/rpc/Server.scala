@@ -25,9 +25,14 @@ import liewhite.json.*
 
 import liewhite.rpc.Transport
 
-// 返回给调用端的错误
-case class RpcFailure(code: Int, internalCode: Int = 0, msg: String = "", data: Json = Json.Null)
-    extends Exception(s"code: $code, msg: $msg data: $data") derives Schema
+/*
+ * Server端只需要将上层业务的返回序列化， 以及恢复异常
+ *
+ * Client只关心是否消息到达了， 以及对方是否回复了， 不关心回复内容
+ */
+
+// 协议层面的返回， 业务层判断code后自行处理data
+case class RpcResponse(code: Int, msg: String = "", data: String) derives Schema
 
 class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
 
@@ -72,9 +77,6 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
             body: Array[Byte]
           ): Unit =
             cb(
-              // ZIO.debug(envelope.toString()) *> ZIO.debug(
-              //   properties.toString()
-              // ) *>
               ZIO.succeed(Chunk(Delivery(envelope, properties, body)))
             )
         }
@@ -92,7 +94,7 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
 
   def listen(
     route: String,
-    callback: Delivery => Task[Array[Byte]],
+    callback: Delivery => Task[String],
     queue: Option[String] = None
   ): ZIO[Scope, Throwable, Fiber.Runtime[Throwable, Unit]] = {
     val queueName = queue.getOrElse(route)
@@ -107,58 +109,56 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
              )
              .fork
       f <- consumer(channel, queueName).runForeach { msg =>
-             val process = ZIO.logInfo(s"[$route] [$queue] ${String(msg.getBody())}") *> ZIO
-               .attempt(callback(msg))
+             val process = ZIO.logInfo(s"serve request: [route: $route queue: $queue body: ${String(msg.getBody())}]") *> ZIO
+               .attempt(callback(msg)) // 捕获业务层面抛出来的异常, 业务层面也应该捕获异常，返回结构化数据
                .flatten
-               .catchSome {
-                 case e: RpcFailure => {
-                   ZIO.succeed(e.toJson.toArray)
-                 }
-               }
+               .tapErrorCause(err => ZIO.logWarning(s"failed process handler: $err"))
+               .map(data => RpcResponse(0, "ok", data))
                .catchAllCause { e =>
                  ZIO.succeed(
-                   RpcFailure(
+                   RpcResponse(
                      500,
-                     0,
-                     "internal error",
-                     e.toString().toJsonAst
-                   ).toJson.toArray
+                     "failed process message",
+                     e.toString()
+                   )
                  )
                }
 
              process.flatMap { result =>
-               ZIO.when(
-                 msg
-                   .getProperties()
-                   .getReplyTo() != null && msg
-                   .getProperties()
-                   .getReplyTo() != "" && msg.getProperties().getHeaders() != null &&
-                   msg.getProperties().getHeaders().get("deliveryTag") != null &&
-                   msg.getProperties().getHeaders().get("deliveryTag").isInstanceOf[Long]
-               )(
-                 publish(
-                   channel,
-                   "",
-                   msg.getProperties().getReplyTo(),
-                   result,
-                   false,
-                   AMQP.BasicProperties
-                     .Builder()
-                     .headers(
-                       Map(
-                         "deliveryTag" -> msg.getProperties().getHeaders().get("deliveryTag")
-                       ).asJava
+               val replyTo = Option(msg.getProperties().getReplyTo())
+               val deliveryTag = Option(msg.getProperties().getHeaders()).flatMap(i =>
+                 Try(i.get("deliveryTag").asInstanceOf[Long]).toOption
+               )
+               val z = ZIO.succeed(replyTo.zip(deliveryTag))
+
+               z.flatMap { rede =>
+                 rede match
+                   case None => {
+                     ZIO.unit
+                   }
+                   case Some((reply, tag)) => {
+                     publish(
+                       channel,
+                       "",
+                       reply,
+                       result.toJson.toArray,
+                       false,
+                       AMQP.BasicProperties
+                         .Builder()
+                         .headers(
+                           Map(
+                             "deliveryTag" -> tag
+                           ).asJava
+                         )
+                         .build()
                      )
-                     .build()
-                 )
-               ) *> ZIO.attemptBlocking {
+                   }
+
+               } *> ZIO.attemptBlocking {
                  channel.basicAck(msg.getEnvelope().getDeliveryTag(), false)
                }
              }
-           }
-             .tapErrorCause(e => ZIO.logError(s"server exit with: $e"))
-             .fork
-
+           }.tapErrorCause(e => ZIO.logError(s"server exit with: $e")).fork
     } yield f)
   }
 

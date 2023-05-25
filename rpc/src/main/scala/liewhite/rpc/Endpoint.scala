@@ -1,12 +1,15 @@
 package liewhite.rpc
 
-import com.rabbitmq.client.AMQP
 import zio.*
+import com.rabbitmq.client.AMQP
 import com.rabbitmq.client.Delivery
 
-import liewhite.json.*
-import liewhite.rpc.RpcClient
-import liewhite.rpc.{RpcFailure, RpcServer}
+import liewhite.json.{*, given}
+
+// 业务异常
+case class EndpointResponse[T](code: Int, internalCode: Int = 0, msg: String = "", data: Option[T]) derives Schema
+case class EndpointException(code: Int, internalCode: Int = 0, msg: String = "")
+    extends Exception(s"code: $code, msg: $msg") derives Schema
 
 class Endpoint[
   IN: Schema,
@@ -20,12 +23,25 @@ class Endpoint[
       _ <- server.listen(
              route,
              req => {
+               // 要区分fail和cause, fail需要正常返回， cause直接500
                for {
                  body <- ZIO
                            .fromEither(String(req.getBody()).fromJson[IN])
-                           .mapError(err => RpcFailure(400, 0, err.toString()))
-                 res <- callback(body)
-                 ser  = res.toJson.toArray
+                           .mapError(err => EndpointException(400, 0, err.toString()))
+                 res <- ZIO
+                          .attemptBlocking(callback(body).map(r => EndpointResponse(200, 200, "ok", Some(r))))
+                          .flatten
+                          .catchSome { case e @ EndpointException(code, icode, msg) =>
+                            ZIO.succeed(
+                              EndpointResponse[OUT](code, icode, msg, None)
+                            )
+                          }
+                          .catchAllCause { err =>
+                            ZIO.succeed(
+                              EndpointResponse[OUT](500, 500, err.toString(), None)
+                            )
+                          }
+                 ser = res.toJson.asString
                } yield ser
              }
            )
@@ -35,38 +51,49 @@ class Endpoint[
                val in  = summon[Schema[IN]]
                val out = summon[Schema[OUT]]
                ZIO.succeed(
-                 s"""|IN:
-                     |${in.ast}
-                     |
-                     |OUT:
-                     |${out.ast}
-                     |""".stripMargin.getBytes()
+                 EndpointResponse[String](
+                   200,
+                   200,
+                   "",
+                   Some(s"""|IN:
+                            |${in.ast}
+                            |
+                            |OUT:
+                            |${out.ast}
+                            |""".stripMargin)
+                 ).toJson.asString
                )
              }
            )
     } yield ()
 
-  def call(req: IN, timeout: Duration = 30.second): ZIO[RpcClient, RpcFailure, OUT] =
+  def call(req: IN, timeout: Duration = 30.second): ZIO[RpcClient, Throwable, OUT] =
     for {
       client <- ZIO.service[RpcClient]
       res <- client
-               .call(route, req.toJson.toArray, timeout = timeout)
-               .mapError(e => RpcFailure(500, 1, s"failed send request : $e"))
-      out <- ZIO
-               .fromEither(new String(res).fromJson[OUT]) // 尝试decode
-               .mapError { e =>
-                 new String(res)
-                   .fromJson[RpcFailure]
-                   .toOption
-                   .getOrElse(RpcFailure(500, 0, e.toString)) // 按错误进行decode
-               }
+               .call(route, req.toJson.asString, timeout = timeout)
+      body <- {
+        if (res.code != 0) {
+          ZIO.fail(EndpointException(500, 500, res.msg))
+        } else {
+          ZIO
+            .fromEither(res.data.fromJson[EndpointResponse[OUT]])
+            .mapError(err => EndpointException(500, 500, "response can't be decode: " + err.toString()))
+        }
+      }
+      out <- {
+        if (body.code >= 300) {
+          ZIO.fail(EndpointException(body.code, body.internalCode, body.msg))
+        } else {
+          ZIO.attempt(body.data.get)
+        }
+      }
     } yield out
 
-  def send(req: IN): ZIO[RpcClient, RpcFailure, Unit] =
+  def send(req: IN): ZIO[RpcClient, Throwable, Unit] =
     for {
       client <- ZIO.service[RpcClient]
       _ <- client
              .send(route, req.toJson.toArray)
-             .mapError(e => RpcFailure(500, 1, s"failed send request : $e"))
     } yield ()
 }
