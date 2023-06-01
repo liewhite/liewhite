@@ -24,7 +24,7 @@ class Endpoint[
              route,
              req => {
                // 要区分fail和cause, fail需要正常返回， cause直接500
-               for {
+               (for {
                  body <- ZIO
                            .fromEither(String(req.getBody()).fromJson[IN])
                            .mapError(err => EndpointException(400, 0, err.toString()))
@@ -42,7 +42,11 @@ class Endpoint[
                             )
                           }
                  ser = res.toJson.asString
-               } yield ser
+               } yield ser).catchSome{
+                  case e@EndpointException(code, internalCode, msg) => {
+                    ZIO.succeed(e.toJson.asString)
+                  }
+               }
              }
            )
       _ <- server.listen(

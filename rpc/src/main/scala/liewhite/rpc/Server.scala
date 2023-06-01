@@ -98,7 +98,6 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
     queue: Option[String] = None
   ): ZIO[Scope, Throwable, Fiber.Runtime[Throwable, Unit]] = {
     val queueName = queue.getOrElse(route)
-
     (for {
       channel <- transport.scopedChannel()
       _       <- declareQueue(channel, queueName, route)
