@@ -10,12 +10,12 @@ ThisBuild / sonatypeRepository     := "https://s01.oss.sonatype.org/service/loca
 
 val zioVersion       = "2.0.13"
 val zioJsonVersion   = "0.5.0"
-val zioSchemaVersion = "0.4.11"
+val zioSchemaVersion = "0.1.0"
 
 val zioSchemaDeps = Seq(
-  "dev.zio" %% "zio-schema"            % zioSchemaVersion,
-  "dev.zio" %% "zio-schema-json"       % zioSchemaVersion,
-  "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion
+  "io.github.liewhite" %% "zio-schema"            % zioSchemaVersion,
+  "io.github.liewhite" %% "zio-schema-json"       % zioSchemaVersion,
+  "io.github.liewhite" %% "zio-schema-derivation" % zioSchemaVersion
 )
 
 lazy val json = project

@@ -42,10 +42,10 @@ class Endpoint[
                             )
                           }
                  ser = res.toJson.asString
-               } yield ser).catchSome{
-                  case e@EndpointException(code, internalCode, msg) => {
-                    ZIO.succeed(e.toJson.asString)
-                  }
+               } yield ser).catchSome {
+                 case e @ EndpointException(code, internalCode, msg) => {
+                   ZIO.succeed(e.toJson.asString)
+                 }
                }
              }
            )
