@@ -1,19 +1,26 @@
 package liewhite.config
 
-import zio.Unsafe
-import zio.config.magnolia.{DeriveConfig, deriveConfig}
-import zio.ConfigProvider
-import java.io.File
 import zio.*
-import zio.config.*
-import zio.config.magnolia.*
-import zio.config.yaml.*
+import liewhite.json.{*, given}
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import java.io.File
 
-def loadConfig[T: DeriveConfig](
+def loadConfig[T: Schema](
   path: String = "conf/config.yaml"
 ): IO[Throwable, T] =
-  ZIO.attempt {
-    ConfigProvider
-      .fromYamlFile(new File(path))
-      .load(deriveConfig[T])
-  }.flatten
+  val yamlReader = new ObjectMapper(new YAMLFactory())
+  val obj        = yamlReader.readTree(new File(path))
+  val jsonWriter = new ObjectMapper()
+  val result     = jsonWriter.writeValueAsString(obj)
+  ZIO.fromEither(
+    result.fromJson[T]
+  )
+
+
+object TestConfig extends ZIOAppDefault{
+  case class A(a:Int) derives Schema
+  def run: ZIO[Any & (ZIOAppArgs & Scope), Any, Any] = {
+    loadConfig[A]().debug
+  }
+}

@@ -67,16 +67,15 @@ lazy val rpc = project
 
 val zioConfigVersion = "4.0.0-RC14"
 val configDeps = Seq(
-  "dev.zio" %% "zio-config"          % zioConfigVersion,
-  "dev.zio" %% "zio-config-magnolia" % zioConfigVersion,
-  "dev.zio" %% "zio-config-yaml"     % zioConfigVersion
+  "dev.zio"                         %% "zio"                     % zioVersion,
+  "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.15.2"
 )
 lazy val config = project
   .in(file("config"))
   .settings(
     name := "config",
-    libraryDependencies ++= configDeps
-  )
+    libraryDependencies ++= configDeps,
+  ).dependsOn(json)
 
 val okHttpDeps = Seq(
   "com.softwaremill.sttp.client3" %% "core"           % "3.6.2",
