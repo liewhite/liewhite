@@ -29,14 +29,15 @@ class Transport(val connection: Connection) {
 }
 
 object Transport {
-  def layer(uri: String): ZLayer[Any, Nothing, Transport] = {
+  def layer(uri: String): ZLayer[Scope, Nothing, Transport] = {
     val tp = ZIO.acquireRelease({
       ZIO.succeed(newTransport(uri))
     })(tp =>
       ZIO.debug("release transport") *> ZIO
         .succeed(tp.close())
     )
-    ZLayer.scoped(tp)
+    ZLayer(tp)
+    
   }
 
   def newTransport(uri: String) = {

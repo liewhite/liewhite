@@ -54,8 +54,8 @@ object App extends ZIOAppDefault {
       .provideSomeLayer(Transport.layer(clientUrl) >>> RpcClient.layer)
 
     ZIO.scoped(for {
-      // s <- server.fork
-      c <- client.fork
+      s <- server
+      c <- client
       _ <- ZIO.never
     } yield ())
   }

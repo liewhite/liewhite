@@ -108,20 +108,21 @@ class RpcServer(transport: Transport) {
              )
              .fork
       f <- consumer(channel, queueName).runForeach { msg =>
-             val process = ZIO.logInfo(s"serve request: [route: $route queue: $queue body: ${String(msg.getBody())}]") *> ZIO
-               .attempt(callback(msg)) // 捕获业务层面抛出来的异常, 业务层面也应该捕获异常，返回结构化数据
-               .flatten
-               .tapErrorCause(err => ZIO.logWarning(s"failed process handler: $err"))
-               .map(data => RpcResponse(0, "ok", data))
-               .catchAllCause { e =>
-                 ZIO.succeed(
-                   RpcResponse(
-                     500,
-                     "failed process message",
-                     e.toString()
+             val process =
+               ZIO.logInfo(s"serve request: [route: $route queue: $queue body: ${String(msg.getBody())}]") *> ZIO
+                 .attempt(callback(msg)) // 捕获业务层面抛出来的异常, 业务层面也应该捕获异常，返回结构化数据
+                 .flatten
+                 .tapErrorCause(err => ZIO.logWarning(s"failed process handler: $err"))
+                 .map(data => RpcResponse(0, "ok", data))
+                 .catchAllCause { e =>
+                   ZIO.succeed(
+                     RpcResponse(
+                       500,
+                       "failed process message",
+                       e.toString()
+                     )
                    )
-                 )
-               }
+                 }
 
              process.flatMap { result =>
                val replyTo = Option(msg.getProperties().getReplyTo())
@@ -177,13 +178,10 @@ class RpcServer(transport: Transport) {
 }
 
 object RpcServer {
-  // 不应该释放
-  def layer: ZLayer[Transport, Nothing, RpcServer] =
-    ZLayer.scoped(
-      for {
-        transport <- ZIO.service[Transport]
-        server <-
-          ZIO.acquireRelease(ZIO.succeed(RpcServer(transport)))(s => ZIO.logInfo("server exit: "))
-      } yield server
-    )
+  def layer: ZLayer[Transport & Scope, Nothing, RpcServer] =
+    ZLayer(for {
+      transport <- ZIO.service[Transport]
+      server <-
+        ZIO.acquireRelease(ZIO.succeed(RpcServer(transport)))(s => ZIO.logInfo("server exit: "))
+    } yield server)
 }

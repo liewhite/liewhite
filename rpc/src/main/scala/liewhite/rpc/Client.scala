@@ -17,6 +17,7 @@ import liewhite.json.{given, *}
 
 import liewhite.rpc.Transport
 import java.util.UUID
+import liewhite.rpc
 
 // rpc 内部错误
 class RpcException(msg: String) extends Exception(msg)
@@ -281,8 +282,8 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock) {
 }
 
 object RpcClient {
-  def layer: ZLayer[Transport, Throwable, RpcClient] =
-    ZLayer.scoped(for {
+  def layer: ZLayer[Transport & Scope, Throwable, liewhite.rpc.RpcClient] =
+    ZLayer(for {
       lock <- ReentrantLock.make()
       tp   <- ZIO.service[Transport]
       cli <- ZIO.acquireRelease(ZIO.succeed(RpcClient(tp, lock)))(client =>
