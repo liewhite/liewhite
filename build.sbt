@@ -10,7 +10,7 @@ ThisBuild / sonatypeRepository     := "https://s01.oss.sonatype.org/service/loca
 
 val zioVersion       = "2.0.13"
 val zioJsonVersion   = "0.5.0"
-val zioSchemaVersion = "0.1.0"
+val zioSchemaVersion = "0.1.1"
 
 val zioSchemaDeps = Seq(
   "io.github.liewhite" %% "zio-schema"            % zioSchemaVersion,
