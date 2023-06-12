@@ -16,6 +16,7 @@ import com.rabbitmq.utility.BlockingCell
 import liewhite.json.{given, *}
 
 import liewhite.rpc.Transport
+import java.util.UUID
 
 // rpc 内部错误
 class RpcException(msg: String) extends Exception(msg)
@@ -43,8 +44,9 @@ enum MessageReceipt(tag: Long, multiple: Boolean) {
   def getMultiple = multiple
 }
 
-class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: String = "amq.direct") {
+class RpcClient(transport: Transport, publishLock: ReentrantLock) {
   val channel = transport.newChannel()
+  val replyTo = UUID.randomUUID().toString()
 
   // deliveryTag, route, promise
   val requests =
@@ -54,8 +56,14 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: Stri
     Try(channel.close())
 
   // 启动 confirmListener， returnListener， consumer
-  def start(): ZIO[Any, Nothing, Fiber.Runtime[Throwable, Long]] = {
+  def start(): ZIO[Any, Throwable, Fiber.Runtime[Throwable, Long]] = {
     (for {
+      replyQueue <- ZIO.attemptBlocking(
+                      channel.queueDeclare(replyTo, true, true, true, new java.util.HashMap[String, Object]).getQueue()
+                    )
+      _ <- ZIO.attemptBlocking {
+             channel.queueBind(replyQueue, "amq.direct", replyQueue)
+           }
       confirmPromise <- Promise.make[Nothing, Unit]
       returnPromise  <- Promise.make[Nothing, Unit]
       consumePromise <- Promise.make[Nothing, Unit]
@@ -112,7 +120,7 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: Stri
       consumeStream =
         ZStream.asyncScoped[Any, Nothing, MessageReceipt] { cb =>
           val consumer = channel.basicConsume(
-            "amq.rabbitmq.reply-to",
+            replyQueue,
             true,
             new DefaultConsumer(channel) {
               override def handleDelivery(
@@ -223,7 +231,7 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: Stri
           newProps = props
                        .builder()
                        .headers(Map("deliveryTag" -> tag).asJava)
-                       .replyTo("amq.rabbitmq.reply-to")
+                       .replyTo(replyTo)
                        .build()
           promise <- Promise.make[RpcException, Delivery]
           _ <- (ZIO.succeed {
@@ -231,7 +239,7 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: Stri
                })
           _ <- ZIO.attemptBlocking {
                  channel
-                   .basicPublish(exchange, route, mandatory, newProps, message.getBytes())
+                   .basicPublish("amq.topic", route, mandatory, newProps, message.getBytes())
                }
         } yield tag
       )
@@ -246,7 +254,7 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: Stri
         parsedBody <- ZIO
                         .fromEither(String(response.getBody()).fromJson[RpcResponse])
                         .mapError(err => RpcException("protocol err: " + err.toString()))
-        
+
       } yield parsedBody
     }
   }
@@ -264,7 +272,7 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: Stri
           tag <- nextTag
           _ <- ZIO.attemptBlocking {
                  channel
-                   .basicPublish(exchange, route, mandatory, props, message)
+                   .basicPublish("amq.topic", route, mandatory, props, message)
                }
         } yield ()
       )
@@ -273,7 +281,7 @@ class RpcClient(transport: Transport, publishLock: ReentrantLock, exchange: Stri
 }
 
 object RpcClient {
-  def layer: ZLayer[Transport, Nothing, RpcClient] =
+  def layer: ZLayer[Transport, Throwable, RpcClient] =
     ZLayer.scoped(for {
       lock <- ReentrantLock.make()
       tp   <- ZIO.service[Transport]

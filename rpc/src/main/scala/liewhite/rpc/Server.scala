@@ -34,7 +34,7 @@ import liewhite.rpc.Transport
 // 协议层面的返回， 业务层判断code后自行处理data
 case class RpcResponse(code: Int, msg: String = "", data: String) derives Schema
 
-class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
+class RpcServer(transport: Transport) {
 
   val channels = new ConcurrentHashMap[Int, Channel]
 
@@ -42,12 +42,12 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
     ZIO.attemptBlocking {
       channel.queueDeclare(
         queueName,
-        false,
+        true,
         false,
         true,
         new ju.HashMap[String, Object]
       )
-      channel.queueBind(queueName, "amq.direct", route)
+      channel.queueBind(queueName, "amq.topic", route)
     }
 
   def returnListener(channel: Channel) =
@@ -138,7 +138,7 @@ class RpcServer(transport: Transport, defaultExchange: String = "amq.direct") {
                    case Some((reply, tag)) => {
                      publish(
                        channel,
-                       "",
+                       "amq.direct",
                        reply,
                        result.toJson.toArray,
                        false,
