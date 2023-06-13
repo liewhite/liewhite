@@ -14,7 +14,7 @@ case class EndpointException(code: Int, internalCode: Int = 0, msg: String = "")
 class Endpoint[
   IN: Schema,
   OUT: Schema
-](route: String) {
+](val route: String) {
   def listen(
     callback: IN => Task[OUT]
   ): ZIO[RpcServer & Scope, Throwable, Unit] =
@@ -72,7 +72,7 @@ class Endpoint[
     } yield ()
 
   def call(req: IN, timeout: Duration = 30.second): ZIO[RpcClient, Throwable, OUT] =
-    for {
+    (for {
       client <- ZIO.service[RpcClient]
       res <- client
                .call(route, req.toJson.asString, timeout = timeout)
@@ -92,7 +92,11 @@ class Endpoint[
           ZIO.attempt(body.data.get)
         }
       }
-    } yield out
+    } yield out).catchSome {
+      case noroute: NoRouteException => {
+        ZIO.fail(EndpointException(404, 404, s"no route for ${noroute.route}"))
+      }
+    }
 
   def send(req: IN): ZIO[RpcClient, Throwable, Unit] =
     for {

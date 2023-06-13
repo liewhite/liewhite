@@ -6,7 +6,7 @@ import liewhite.json.*
 import com.rabbitmq.client.Delivery
 import liewhite.rpc.*
 
-class Broadcast[IN: Schema](route: String) {
+class Broadcast[IN: Schema](val route: String) {
   def subscribe(
     queueName: String,
     callback: IN => Task[Unit]

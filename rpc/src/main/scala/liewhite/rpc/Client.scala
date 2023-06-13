@@ -20,11 +20,11 @@ import java.util.UUID
 import liewhite.rpc
 
 // rpc 内部错误
-class RpcException(msg: String) extends Exception(msg)
+class RpcException(val msg: String) extends Exception(msg)
 
-class NoRouteException(route: String) extends RpcException(s"no route ${route}")
-class NackException(tag: String)      extends RpcException(s"nack ${tag}")
-class TimeoutException(route: String) extends RpcException(s"timeout ${route}")
+class NoRouteException(val route: String) extends RpcException(s"no route ${route}")
+class NackException(val tag: String)      extends RpcException(s"nack ${tag}")
+class TimeoutException(val route: String) extends RpcException(s"timeout ${route}")
 
 enum MessageReceipt(tag: Long, multiple: Boolean) {
   case Ack(tag: Long, multiple: Boolean) extends MessageReceipt(tag, multiple)

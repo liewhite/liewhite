@@ -9,10 +9,11 @@ import liewhite.rpc.XX
 case class XX(a: Int, b: Option[Boolean] = None) derives Schema
 
 object App extends ZIOAppDefault {
-  val endpoint   = Endpoint[Unit, String]("jqk")
-  val endpoint2  = Endpoint[XX, String]("jqk2")
-  val broadcast  = Broadcast[Int]("broadcast")
-  val broadcast2 = Broadcast[Int]("broadcast2")
+  val endpoint        = Endpoint[Unit, String]("jqk")
+  val norouteEndpoint = Endpoint[Unit, String]("jqk111")
+  val endpoint2       = Endpoint[XX, String]("jqk2")
+  val broadcast       = Broadcast[Int]("broadcast")
+  val broadcast2      = Broadcast[Int]("broadcast2")
 
   val serverUrl = "amqp://guest:guest@localhost:5672"
   val clientUrl = "amqp://guest:guest@localhost:5673"
@@ -38,18 +39,24 @@ object App extends ZIOAppDefault {
 
     val client = (for {
       client <- ZIO.service[RpcClient]
-      _      <- broadcast.broadcast(1).schedule(Schedule.fixed(1.second)).fork
-      _ <- endpoint
+      // _      <- broadcast.broadcast(1).schedule(Schedule.fixed(1.second)).fork
+      _ <- norouteEndpoint
              .call(XX(1), timeout = 30.second)
              .catchAllCause(e => ZIO.succeed(e.toString()))
              .debug("response1: ")
              .schedule(Schedule.fixed(1.second))
              .fork
-      _ <- endpoint2
-             .call(XX(1), timeout = 30.second)
-             .debug("response: ")
-             .schedule(Schedule.fixed(1.second))
-             .fork
+      // _ <- endpoint
+      //        .call(XX(1), timeout = 30.second)
+      //        .catchAllCause(e => ZIO.succeed(e.toString()))
+      //        .debug("response1: ")
+      //        .schedule(Schedule.fixed(1.second))
+      //        .fork
+      // _ <- endpoint2
+      //        .call(XX(1), timeout = 30.second)
+      //        .debug("response: ")
+      //        .schedule(Schedule.fixed(1.second))
+      //        .fork
     } yield ())
       .provideSomeLayer(Transport.layer(clientUrl) >>> RpcClient.layer)
 
