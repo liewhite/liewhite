@@ -53,5 +53,8 @@ given Schema[Json] = dynamicSchema.transformOrFail(
     s
   }
 )
+extension (j: Json) {
+  def asType[T](using s: Schema[T]) = j.as[T](using JsonCodec.jsonDecoder(s))
+}
 
 given [T](using l: Schema[List[T]]): Schema[Seq[T]] = l.transform(l => l.toSeq, s => s.toList)

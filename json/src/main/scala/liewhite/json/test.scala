@@ -14,7 +14,12 @@ object E{
     given Schema[E.E2] = DeriveSchema.gen[E.E2]
 }
 
+case class X(m: Map[String, String]) derives Schema
+
+case class Y() derives Schema
 @main def main = {
    println("""{"a":1,"b": "xx"}""".fromJson[A[Boolean]].toOption.get.toJson.asString)
    println("""{"a":1}""".fromJson[E.E1])
+   println("""{"m": {"a":"1"}}""".fromJson[X])
+   println("{}".fromJson[Json].toOption.get.asType[Y])
 }
