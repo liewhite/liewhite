@@ -18,6 +18,7 @@ import liewhite.json.{given, *}
 import liewhite.rpc.Transport
 import java.util.UUID
 import liewhite.rpc
+import liewhite.rpc.RpcResponse
 
 // rpc 内部错误
 class RpcException(val msg: String) extends Exception(msg)
