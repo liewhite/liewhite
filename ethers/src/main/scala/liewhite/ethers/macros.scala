@@ -1,19 +1,19 @@
 package liewhite.ethers
 
 import scala.quoted.*
+import liewhite.json.{*, given}
 
-// data 直接就是abi type, 就像直接在solidity里一样
-inline def abiencode(inline data: Any*): Array[Byte] =
-  ${ abiencodeImpl('data) }
+transparent inline def encoderFromABI(inline abi: String) =
+  ${ encoderFromABIImpl('abi) }
 
-
-def abiencodeImpl(data: Expr[Seq[Any]])(using Quotes): Expr[Array[Byte]] = {
-    import quotes.reflect.*
-    // val value = data
-    ???
-}
-
-// todo 生成abi type内部表示， 比如web3j的类型
-def parseABIType[T:Type] = {
+private def encoderFromABIImpl(abi: Expr[String])(using q: Quotes): Expr[Any] = {
+  import q.reflect.*
+  val tp = TypeRepr.typeConstructorOf(ClassLoader.getSystemClassLoader().loadClass(""))
+  tp.asType match
+    case '[t] => {
+      '{
+        ???
+      }
+    }
 
 }
