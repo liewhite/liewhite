@@ -1,21 +1,20 @@
 ThisBuild / organization           := "io.github.liewhite"
 ThisBuild / organizationName       := "liewhite"
 ThisBuild / version                := sys.env.get("RELEASE_VERSION").getOrElse("0.4.3")
-ThisBuild / scalaVersion           := "3.2.2"
+ThisBuild / scalaVersion           := "3.3.1"
 ThisBuild / versionScheme          := Some("early-semver")
 ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
 ThisBuild / publishTo              := sonatypePublishToBundle.value
 sonatypeCredentialHost             := "s01.oss.sonatype.org"
 ThisBuild / sonatypeRepository     := "https://s01.oss.sonatype.org/service/local"
 
-val zioVersion       = "2.0.13"
-val zioJsonVersion   = "0.5.0"
-val zioSchemaVersion = "0.1.1"
+val zioVersion       = "2.0.19"
+val zioSchemaVersion = "0.4.16"
 
 val zioSchemaDeps = Seq(
-  "io.github.liewhite" %% "zio-schema"            % zioSchemaVersion,
-  "io.github.liewhite" %% "zio-schema-json"       % zioSchemaVersion,
-  "io.github.liewhite" %% "zio-schema-derivation" % zioSchemaVersion
+  "dev.zio" %% "zio-schema"            % zioSchemaVersion,
+  "dev.zio" %% "zio-schema-json"       % zioSchemaVersion,
+  "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion
 )
 
 lazy val json = project

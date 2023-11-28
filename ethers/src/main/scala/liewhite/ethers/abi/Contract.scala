@@ -9,6 +9,7 @@ import liewhite.ethers.toBytes
 import liewhite.ethers.abi.types.{ABIStruct, ABIStaticArray}
 import org.web3j.abi.datatypes.AbiTypes
 import org.web3j.abi.datatypes.StaticArray
+import org.web3j.abi.datatypes.Address
 
 class Functions(functions: Map[String, ABIFunction[_, _]]) extends Selectable {
   def selectDynamic(name: String): Any =
@@ -35,8 +36,14 @@ object Contract {
         TypeRepr.of[ABIStruct].appliedTo(makeType(in.components.get))
       } else if (in.`type`.endsWith("[]")) {
         TypeRepr.of[java.util.List].appliedTo(makeTypeFromInput(in.copy(`type` = in.`type`.dropRight(2))))
-      } else {
-        TypeRepr.typeConstructorOf(AbiTypes.getType(in.`type`))
+      } else if(in.`type`.startsWith("uint") || in.`type`.startsWith("int")) {
+        TypeRepr.of[BigInt]
+      } else if(in.`type` == "bool") {
+        TypeRepr.of[Boolean]
+      } else if(in.`type` == "address") {
+        TypeRepr.of[Address]
+      }else {
+        TypeRepr.of[Int]
       }
 
     def makeType(item: Seq[Input]): TypeRepr = {

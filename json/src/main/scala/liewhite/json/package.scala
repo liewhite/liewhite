@@ -16,8 +16,8 @@ export zio.schema.derived
 export zio.json.ast.Json
 
 extension [T: Schema](s: T) {
-  def toJson    = JsonCodec.JsonEncoder.encode(summon[Schema[T]], s)
-  def toJsonAst = JsonCodec.JsonEncoder.encode(summon[Schema[T]], s).fromJson[Json].toOption.get
+  def toJson    = JsonCodec.JsonEncoder.encode(summon[Schema[T]], s, JsonCodec.Config.default)
+  def toJsonAst = JsonCodec.JsonEncoder.encode(summon[Schema[T]], s, JsonCodec.Config.default).fromJson[Json].toOption.get
 }
 
 extension (s: String) {
@@ -45,7 +45,7 @@ given Schema[Json] = dynamicSchema.transformOrFail(
   a => {
     zio.json
       .JsonDecoder[Json]
-      .decodeJson(zio.schema.codec.JsonCodec.JsonEncoder.encode(dynamicSchema, a).asString)
+      .decodeJson(zio.schema.codec.JsonCodec.JsonEncoder.encode(dynamicSchema, a, JsonCodec.Config.default).asString)
   },
   b => {
     val str = zio.json.JsonEncoder[Json].encodeJson(b).toString()
