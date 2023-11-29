@@ -29,6 +29,7 @@ lazy val common = project
   .settings(
     name                                   := "common",
     libraryDependencies += "org.typelevel" %% "shapeless3-deriving" % "3.3.0",
+    libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0",
     libraryDependencies += "dev.zio"       %% "zio"                 % zioVersion,
     libraryDependencies ++= zioSchemaDeps,
     libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
@@ -73,8 +74,9 @@ lazy val config = project
   .in(file("config"))
   .settings(
     name := "config",
-    libraryDependencies ++= configDeps,
-  ).dependsOn(json)
+    libraryDependencies ++= configDeps
+  )
+  .dependsOn(json)
 
 val okHttpDeps = Seq(
   "com.softwaremill.sttp.client3" %% "core"           % "3.6.2",
@@ -84,13 +86,22 @@ val web3jDeps = Seq(
   "org.web3j" % "core" % "4.9.8"
 )
 
+lazy val trader = project
+  .in(file("trader"))
+  .settings(
+    name := "trader",
+    libraryDependencies ++= okHttpDeps,
+    libraryDependencies += "dev.zio" %% "zio-http" % "3.0.0-RC3",
+  )
+  .dependsOn(common, json)
+
 lazy val ethers = project
   .in(file("ethers"))
   .settings(
     name := "ethers",
     libraryDependencies ++= okHttpDeps,
     libraryDependencies ++= web3jDeps,
-    libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0",
+    libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0"
   )
   .dependsOn(common, json)
 
@@ -99,4 +110,4 @@ lazy val root = project
   .settings(
     publish / skip := true
   )
-  .aggregate(sqlx, rpc, common, config, json, ethers)
+  .aggregate(sqlx, rpc, common, config, json, ethers, trader)
