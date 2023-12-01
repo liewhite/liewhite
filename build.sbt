@@ -91,7 +91,7 @@ lazy val trader = project
   .settings(
     name := "trader",
     libraryDependencies ++= okHttpDeps,
-    libraryDependencies += "dev.zio" %% "zio-http" % "3.0.0-RC3",
+    libraryDependencies += "dev.zio" %% "zio-http" % "3.0.0-RC4",
   )
   .dependsOn(common, json)
 

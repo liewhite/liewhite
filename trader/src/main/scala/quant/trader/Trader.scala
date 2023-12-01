@@ -14,6 +14,9 @@ import zio.*
 import liewhite.json.{*, given}
 
 trait Trader {
+
+  def klines(interval: String, limit: Int): Task[Seq[Trader.Kline]]
+
   // 统一使用小写表示
   def getBalance(currency: String): Task[Trader.Balance]
 

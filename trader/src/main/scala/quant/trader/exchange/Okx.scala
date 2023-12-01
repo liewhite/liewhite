@@ -46,6 +46,29 @@ class Okx(
   def start(): Task[Unit] =
     ZIO.unit
 
+  def klines(interval: String, limit: Int = 100): Task[Seq[Trader.Kline]] = {
+    val result = request[Unit, Seq[Seq[String]]](
+      zio.http.Method.GET,
+      s"api/v5/market/candles",
+      Map("instId" -> exchangeSymbol, "limit" -> limit.toString(), "bar" -> interval),
+      None,
+      false
+    )
+    result.map(data => {
+      data.map(items => {
+        Trader.Kline(
+        items(0).toLong, 
+        items(1).toFloat,
+        items(3).toFloat,
+        items(2).toFloat,
+        items(4).toFloat,
+        items(5).toFloat,
+        items(8) == "1",
+        )
+      }).reverse
+    })
+  }
+
   override def positionStream(): ZStream[Any, Throwable, Trader.Position] =
     (stream[Chunk[Okx.Position]](
       "positions",
@@ -258,7 +281,8 @@ class Okx(
     method: http.Method,
     path: String,
     qs: Map[String, String],
-    body: Option[IN]
+    body: Option[IN],
+    auth: Boolean = true
   ): ZIO[Any, Throwable, OUT] = {
     val bodyStr = body match {
       case None        => ""
@@ -269,11 +293,17 @@ class Okx(
 
     val pathWithQs = uriWithParams.encodedPath() + (if (qs.isEmpty) { "" }
                                                     else { "?" + uriWithParams.encodedQuery() })
-    val headers = authHeaders(
-      method,
-      pathWithQs,
-      bodyStr
-    )
+    val headers = if (auth) {
+      authHeaders(
+        method,
+        pathWithQs,
+        bodyStr
+      )
+    } else {
+      Map(
+        "content-type" -> "application/json"
+      )
+    }
     val urlReq         = okhttp3.Request.Builder().url(uriWithParams)
     val reqWithHeaders = headers.foldLeft(urlReq)((acc, item) => acc.addHeader(item._1, item._2))
     val requestWithBody = body match

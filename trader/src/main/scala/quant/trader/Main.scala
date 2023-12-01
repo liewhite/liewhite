@@ -22,8 +22,12 @@ case class Offset(ts: Long, offset: Double)
 // 距离基数来自于两边挂单的差距
 object Main extends ZIOAppDefault {
   def run: ZIO[Any & (ZIOAppArgs & Scope), Any, Any] = {
-    val okx = exchange.Okx("BTC","USDT","","","",None)
-    okx.klineStream("1m").debug.runDrain
+    val okx = exchange.Okx("BTC", "USDT", "", "", "", None)
+    Metrics.kdj(ZStream.fromIterableZIO(okx.klines("1m", 100)) ++ okx.klineStream("1m")).debug.runDrain
+    Metrics.macd(ZStream.fromIterableZIO(okx.klines("1m", 100)) ++ okx.klineStream("1m")).debug.runDrain
+
+    // ZStream.range(1,10).runDrain
+    // okx.klineStream("1m").debug.runDrain
   }
   // def run: ZIO[Any & (ZIOAppArgs & Scope), Any, Any] =
   //   val local: Boolean = true
