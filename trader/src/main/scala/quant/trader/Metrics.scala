@@ -17,7 +17,7 @@ object Metrics {
         }
         val klinesWithLast = klines.appended(kline).takeRight(n)
         val result = klinesWithLast.map(_.close).sum / klinesWithLast.length
-        (newKlines, Ma(kline.ts, result, kline.end))
+        (newKlines.takeRight(20), Ma(kline.ts, result, kline.end))
       )
 
   }
