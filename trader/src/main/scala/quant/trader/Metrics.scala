@@ -3,6 +3,25 @@ import zio.stream.*
 import liewhite.json.{*, given}
 
 object Metrics {
+  case class Ma(ts: Long, price: Float, end: Boolean) derives Schema {
+
+  }
+
+  def ma(n: Int, klines: ZStream[Any, Throwable, Trader.Kline]): ZStream[Any, Throwable, Ma] = {
+    klines
+      .mapAccum(Seq.empty[Trader.Kline]) ( (klines, kline) =>
+        val newKlines = if(kline.end) {
+          klines.appended(kline)
+        }else{
+          klines
+        }
+        val klinesWithLast = klines.appended(kline).takeRight(n)
+        val result = klinesWithLast.map(_.close).sum / klinesWithLast.length
+        (newKlines, Ma(kline.ts, result, kline.end))
+      )
+
+  }
+
   case class Kdj(ts: Long, rsv: Float, k: Float, d: Float, j: Float, end: Boolean) derives Schema {
     def next(ks: Seq[Trader.Kline]) = {
       val headK = ks.last
