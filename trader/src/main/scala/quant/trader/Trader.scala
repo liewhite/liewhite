@@ -50,6 +50,8 @@ trait Trader {
 
   def klineStream(interval: String): ZStream[Any, Throwable, Trader.Kline]
 
+  def orderbookStream(depth: Int): ZStream[Any, Throwable, Trader.OrderBook]
+
   def start(): Task[Unit]
 
 }
@@ -153,6 +155,12 @@ object Trader {
       close: Float,
       volume: Float,
       end: Boolean
+  ) derives Schema
+
+  case class OrderBook(
+      ts: Long,
+      bids: Seq[Seq[Float]],
+      asks: Seq[Seq[Float]],
   ) derives Schema
 
 }

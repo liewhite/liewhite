@@ -39,7 +39,6 @@ class BinanceF(
   // todo 根据market改变后缀
   val exchangeSymbol = s"$baseToken$quoteToken".toUpperCase()
 
-
   def klines(interval: String, limit: Int): Task[Seq[Trader.Kline]] = ???
 
   def flushListenKey(): Task[String] =
@@ -134,9 +133,10 @@ class BinanceF(
       }
       .retry(Schedule.fixed(3.second))
 
-  override def klineStream(interval: String) = {
+  override def klineStream(interval: String) =
     ???
-  }
+
+  override def orderbookStream(depth: Int): ZStream[Any, Throwable, Trader.OrderBook] = ???
 
   override def getOrder(orderID: Option[String], clientOrderID: Option[String]): Task[Trader.Order] = {
     val path   = "fapi/v1/order"

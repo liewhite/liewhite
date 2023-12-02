@@ -25,7 +25,8 @@ object Main extends ZIOAppDefault {
     val okx = exchange.Okx("BTC", "USDT", "", "", "", None)
     // Metrics.kdj(ZStream.fromIterableZIO(okx.klines("1m", 100)) ++ okx.klineStream("1m")).debug.runDrain
     // Metrics.macd(ZStream.fromIterableZIO(okx.klines("1m", 100)) ++ okx.klineStream("1m")).debug.runDrain
-    Metrics.ma(20,ZStream.fromIterableZIO(okx.klines("1m", 100)) ++ okx.klineStream("1m")).debug.runDrain
+    // Metrics.ma(20,ZStream.fromIterableZIO(okx.klines("1m", 100)) ++ okx.klineStream("1m")).debug.runDrain
+    okx.orderbookStream(1).debug.runDrain
 
     // ZStream.range(1,10).runDrain
     // okx.klineStream("1m").debug.runDrain

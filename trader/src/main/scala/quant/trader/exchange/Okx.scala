@@ -54,19 +54,19 @@ class Okx(
       None,
       false
     )
-    result.map(data => {
-      data.map(items => {
+    result.map { data =>
+      data.map { items =>
         Trader.Kline(
-        items(0).toLong, 
-        items(1).toFloat,
-        items(3).toFloat,
-        items(2).toFloat,
-        items(4).toFloat,
-        items(5).toFloat,
-        items(8) == "1",
+          items(0).toLong,
+          items(1).toFloat,
+          items(3).toFloat,
+          items(2).toFloat,
+          items(4).toFloat,
+          items(5).toFloat,
+          items(8) == "1"
         )
-      }).reverse
-    })
+      }.reverse
+    }
   }
 
   override def positionStream(): ZStream[Any, Throwable, Trader.Position] =
@@ -342,10 +342,63 @@ class Okx(
 
   override def klineStream(interval: String) = {
     val wssUrl = "wss://ws.okx.com:8443/ws/v5/business"
-    val s = ZStream.asyncScoped[Any, Throwable, Kline] { cb =>
+    publicStream[Seq[String], Trader.Kline](
+      wssUrl,
+      f"candle$interval",
+      k => {
+        Right(
+          Kline(
+            k(0).toLong,
+            k(1).toFloat,
+            k(3).toFloat,
+            k(2).toFloat,
+            k(4).toFloat,
+            k(5).toFloat,
+            k(8) == "1"
+          )
+        )
+      }
+    )
+  }
 
-      var state = "loginSent"
+  case class OkOrderBook(ts: Long, asks: Seq[Seq[String]], bids: Seq[Seq[String]]) derives Schema
 
+  override def orderbookStream(depth: Int): ZStream[Any, Throwable, Trader.OrderBook] = {
+    val wssUrl = "wss://ws.okx.com:8443/ws/v5/public"
+    val channel = if(depth == 1) {
+      "bbo-tbt"
+    }else {
+      throw Exception(s"not supported orderbook depth $depth")
+    }
+    publicStream[OkOrderBook, Trader.OrderBook](
+      wssUrl,
+      channel,
+      ok => {
+        val asks = ok.asks.map { item =>
+          Seq(item(0).toFloat, item(1).toFloat) // price, vol
+        }
+        val bids = ok.bids.map { item =>
+          Seq(item(0).toFloat, item(1).toFloat) // price, vol
+        }
+        Right(
+          Trader.OrderBook(
+            ok.ts,
+            bids,
+            asks
+          )
+        )
+      }
+    )
+
+  }
+
+  def publicStream[OK: Schema, OUT: Schema](
+    wss: String,
+    channel: String,
+    transformer: OK => Either[Throwable, OUT]
+  ): ZStream[Any, Throwable, OUT] = {
+    val wssUrl = wss
+    val s = ZStream.asyncScoped[Any, Throwable, OUT] { cb =>
       val req = new Request.Builder().url(wssUrl).build()
       val ws = wsClient.newWebSocket(
         req,
@@ -355,7 +408,7 @@ class Okx(
               "subscribe",
               Seq(
                 Okx.WsSubscribeRequest(
-                  f"candle$interval",
+                  channel,
                   "",
                   exchangeSymbol
                 )
@@ -366,29 +419,20 @@ class Okx(
 
           override def onMessage(s: WebSocket, x: String): Unit =
             if (x.contains("error")) {
-              cb(ZIO.fail(Some(Exception(s"kline subscribe failed $x"))))
+              cb(ZIO.fail(Some(Exception(s"$channel subscribe failed $x "))))
             } else if (x.contains("data")) {
-              x.fromJson[Okx.WsPush[Seq[Seq[String]]]] match
+              x.fromJson[Okx.WsPush[Seq[OK]]] match
                 case Left(value) => {
-                  cb(ZIO.fail(Some(Exception(s"Unknown push data $x"))))
+                  cb(ZIO.fail(Some(Exception(s"$channel Unknown push data $x"))))
                 }
                 case Right(value) => {
                   val data = value.data
                   if (data.isEmpty) {
-                    cb(ZIO.fail(Some(Exception(s"kline empty $x"))))
+                    cb(ZIO.fail(Some(Exception(s"$channel empty $x"))))
                   } else {
-                    val k = data.head
-                    val kline = Kline(
-                      k(0).toLong,
-                      k(1).toFloat,
-                      k(3).toFloat,
-                      k(2).toFloat,
-                      k(4).toFloat,
-                      k(5).toFloat,
-                      k(8) == "1"
-                    )
-                    cb(ZIO.succeed(Chunk(kline)))
-
+                    val k      = data.head
+                    val result = transformer(k).map(Chunk(_)).left.map(Some(_): Option[Throwable])
+                    cb(ZIO.fromEither(result))
                   }
                 }
             }
