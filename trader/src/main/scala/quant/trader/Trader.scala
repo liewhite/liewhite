@@ -14,6 +14,7 @@ import zio.*
 import liewhite.json.{*, given}
 
 trait Trader {
+  def symbolInfo(): Task[Trader.SymbolInfo]
 
   def klines(interval: String, limit: Int): Task[Seq[Trader.Kline]]
 
@@ -106,13 +107,13 @@ object Trader {
   }
 
   object OrderState {}
+  case class SymbolInfo(
+    quantityStep: Float, // 买入数量精度, 币安按币的数量买入， ok按合约张数， 所以ok取1， 币安取stepSize
+    priceStep: Float, // 价格精度
+    ctVal: Float // 面值, 比如ok一张合约代表0.1个ETH， 币安没有张的概念， 直接取1
+  ) derives Schema
 
   case class BatchRevokeOrdersItem(
-    ordId: Option[String],
-    clOrdId: Option[String]
-  )
-  case class OkxBatchRevokeOrdersItem(
-    
     ordId: Option[String],
     clOrdId: Option[String]
   )

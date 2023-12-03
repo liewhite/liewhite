@@ -39,6 +39,8 @@ class BinanceF(
   // todo 根据market改变后缀
   val exchangeSymbol = s"$baseToken$quoteToken".toUpperCase()
 
+  def symbolInfo(): Task[Trader.SymbolInfo] =
+    ???
   def klines(interval: String, limit: Int): Task[Seq[Trader.Kline]] = ???
 
   def flushListenKey(): Task[String] =

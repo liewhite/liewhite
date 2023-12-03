@@ -46,6 +46,18 @@ class Okx(
   def start(): Task[Unit] =
     ZIO.unit
 
+  def symbolInfo(): Task[Trader.SymbolInfo] = {
+    request[Unit, Seq[Map[String,String]]](
+      zio.http.Method.GET,
+      s"api/v5/public/instruments",
+      Map("instId" -> exchangeSymbol, "instType" -> "SWAP"),
+      None,
+      false
+    ).map(data => {
+      val result = data(0)
+      Trader.SymbolInfo(1, result("tickSz").toFloat, result("ctVal").toFloat)
+    })
+  }
   def klines(interval: String, limit: Int = 100): Task[Seq[Trader.Kline]] = {
     val result = request[Unit, Seq[Seq[String]]](
       zio.http.Method.GET,
