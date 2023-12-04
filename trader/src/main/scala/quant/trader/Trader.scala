@@ -108,9 +108,9 @@ object Trader {
 
   object OrderState {}
   case class SymbolInfo(
-    quantityStep: Float, // 买入数量精度, 币安按币的数量买入， ok按合约张数， 所以ok取1， 币安取stepSize
-    priceStep: Float, // 价格精度
-    ctVal: Float // 面值, 比如ok一张合约代表0.1个ETH， 币安没有张的概念， 直接取1
+    quantityStep: Double, // 买入数量精度, 币安按币的数量买入， ok按合约张数， 所以ok取1， 币安取stepSize
+    priceStep: Double, // 价格精度
+    ctVal: Double // 面值, 比如ok一张合约代表0.1个ETH， 币安没有张的概念， 直接取1
   ) derives Schema
 
   case class BatchRevokeOrdersItem(
@@ -150,18 +150,18 @@ object Trader {
 
   case class Kline(
       ts: Long,
-      open: Float,
-      low: Float,
-      high: Float,
-      close: Float,
-      volume: Float,
+      open: Double,
+      low: Double,
+      high: Double,
+      close: Double,
+      volume: Double,
       end: Boolean
   ) derives Schema
 
   case class OrderBook(
       ts: Long,
-      bids: Seq[Seq[Float]],
-      asks: Seq[Seq[Float]],
+      bids: Seq[Seq[Double]],
+      asks: Seq[Seq[Double]],
   ) derives Schema
 
 }

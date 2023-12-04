@@ -3,7 +3,7 @@ import zio.stream.*
 import liewhite.json.{*, given}
 
 object Metrics {
-  case class Ma(ts: Long, price: Float, end: Boolean) derives Schema {
+  case class Ma(ts: Long, price: Double, end: Boolean) derives Schema {
 
   }
 
@@ -22,7 +22,7 @@ object Metrics {
 
   }
 
-  case class Kdj(ts: Long, rsv: Float, k: Float, d: Float, j: Float, end: Boolean) derives Schema {
+  case class Kdj(ts: Long, rsv: Double, k: Double, d: Double, j: Double, end: Boolean) derives Schema {
     def next(ks: Seq[Trader.Kline]) = {
       val headK = ks.last
 
@@ -85,7 +85,7 @@ object Metrics {
       }
       .collectSome
 
-  case class Macd(ts: Long, ema12: Float, ema26: Float, diff: Float, dea: Float, bar: Float, end: Boolean)
+  case class Macd(ts: Long, ema12: Double, ema26: Double, diff: Double, dea: Double, bar: Double, end: Boolean)
       derives Schema {
     def next(k: Trader.Kline) = {
       val short  = 12

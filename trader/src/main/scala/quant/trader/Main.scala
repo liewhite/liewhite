@@ -22,11 +22,24 @@ case class Offset(ts: Long, offset: Double)
 // 距离基数来自于两边挂单的差距
 object Main extends ZIOAppDefault {
   def run: ZIO[Any & (ZIOAppArgs & Scope), Any, Any] = {
-    val okx = exchange.Okx("PYTH", "USDT", "", "", "", None)
-    // Metrics.kdj(ZStream.fromIterableZIO(okx.klines("1m", 100)) ++ okx.klineStream("1m")).debug.runDrain
+    val okx = exchange.Okx("BTC", "USDT", "", "", "", None)
+    Metrics
+      .kdj(ZStream.fromIterableZIO(okx.klines("1H", 100)) ++ okx.klineStream("1H"))
+      .map { kdj =>
+        kdj.j
+      //   println("kdj: " -> kdj.j)
+      //   val h9 = kdj.k9.map(_.high).max
+      //   val l9 = kdj.k9.map(_.low).min
+      //   kdj.lastKdj match
+      //     case None          => 0
+      //     case Some(lastKdj) => l9 + ((kdj.j * 9 + lastKdj.d * 12 - lastKdj.k * 14) * (h9 - l9) / 700)
+
+      }
+      .debug("price: ")
+      .runDrain
     // Metrics.macd(ZStream.fromIterableZIO(okx.klines("1m", 100)) ++ okx.klineStream("1m")).debug.runDrain
     // Metrics.ma(20,ZStream.fromIterableZIO(okx.klines("1m", 100)) ++ okx.klineStream("1m")).debug.runDrain
-    okx.symbolInfo().debug
+    // okx.symbolInfo().debug
     // okx.orderbookStream(1).debug.runDrain
 
     // ZStream.range(1,10).runDrain

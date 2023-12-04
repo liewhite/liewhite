@@ -55,7 +55,7 @@ class Okx(
       false
     ).map(data => {
       val result = data(0)
-      Trader.SymbolInfo(1, result("tickSz").toFloat, result("ctVal").toFloat)
+      Trader.SymbolInfo(1, result("tickSz").toDouble, result("ctVal").toDouble)
     })
   }
   def klines(interval: String, limit: Int = 100): Task[Seq[Trader.Kline]] = {
@@ -70,11 +70,11 @@ class Okx(
       data.map { items =>
         Trader.Kline(
           items(0).toLong,
-          items(1).toFloat,
-          items(3).toFloat,
-          items(2).toFloat,
-          items(4).toFloat,
-          items(5).toFloat,
+          items(1).toDouble,
+          items(3).toDouble,
+          items(2).toDouble,
+          items(4).toDouble,
+          items(5).toDouble,
           items(8) == "1"
         )
       }.reverse
@@ -361,11 +361,11 @@ class Okx(
         Right(
           Kline(
             k(0).toLong,
-            k(1).toFloat,
-            k(3).toFloat,
-            k(2).toFloat,
-            k(4).toFloat,
-            k(5).toFloat,
+            k(1).toDouble,
+            k(3).toDouble,
+            k(2).toDouble,
+            k(4).toDouble,
+            k(5).toDouble,
             k(8) == "1"
           )
         )
@@ -387,10 +387,10 @@ class Okx(
       channel,
       ok => {
         val asks = ok.asks.map { item =>
-          Seq(item(0).toFloat, item(1).toFloat) // price, vol
+          Seq(item(0).toDouble, item(1).toDouble) // price, vol
         }
         val bids = ok.bids.map { item =>
-          Seq(item(0).toFloat, item(1).toFloat) // price, vol
+          Seq(item(0).toDouble, item(1).toDouble) // price, vol
         }
         Right(
           Trader.OrderBook(
