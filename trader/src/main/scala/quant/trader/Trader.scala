@@ -20,7 +20,7 @@ trait Trader {
 
   // 统一使用小写表示
   def getBalance(currency: String): Task[Trader.Balance]
-  def getPosition(): Task[Trader.Position]
+  def getPosition(): Task[Option[Trader.RestPosition]]
 
   // 统一使用小写表示token, 对应交易所实现自行转换拼接为symbol
   def createOrder(
@@ -137,6 +137,16 @@ object Trader {
     case Isolated
     case Cross
   }
+
+  case class RestPosition(
+    marginMode: MarginMode,
+    side: PositionSide,
+    size: Double,     
+    avgPrice: Double, 
+    createTime: Long,
+    updateTime: Long
+  ) derives Schema
+
   case class Position(
     marginMode: MarginMode,
     side: PositionSide,

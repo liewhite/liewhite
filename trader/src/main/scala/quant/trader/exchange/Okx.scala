@@ -46,18 +46,17 @@ class Okx(
   def start(): Task[Unit] =
     ZIO.unit
 
-  def symbolInfo(): Task[Trader.SymbolInfo] = {
-    request[Unit, Seq[Map[String,String]]](
+  def symbolInfo(): Task[Trader.SymbolInfo] =
+    request[Unit, Seq[Map[String, String]]](
       zio.http.Method.GET,
       s"api/v5/public/instruments",
       Map("instId" -> exchangeSymbol, "instType" -> "SWAP"),
       None,
       false
-    ).map(data => {
+    ).map { data =>
       val result = data(0)
       Trader.SymbolInfo(1, result("tickSz").toDouble, result("ctVal").toDouble)
-    })
-  }
+    }
   def klines(interval: String, limit: Int = 100): Task[Seq[Trader.Kline]] = {
     val result = request[Unit, Seq[Seq[String]]](
       zio.http.Method.GET,
@@ -81,28 +80,37 @@ class Okx(
     }
   }
 
-  def getPosition(): Task[Trader.Position] = {
+  def getPosition(): Task[Option[Trader.RestPosition]] =
     request[Unit, Seq[Okx.Position]](
       zio.http.Method.GET,
       "api/v5/account/positions",
       Map(
         "instType" -> "SWAP",
-        "instId" -> exchangeSymbol
+        "instId"   -> exchangeSymbol
       ),
-      None, 
+      None,
       true
-    ).map(okp => {
-      val item = okp.head
-      Trader.Position(
-        Trader.MarginMode.parseOkx(item.mgnMode),
-        Trader.PositionSide.parseOkx(item.posSide),
-        item.pos.toDoubleOption,
-        item.avgPx.toDoubleOption,
-        item.cTime.toLong,
-        item.uTime.toLong
-      )
-    })
-  }
+    ).map { okp =>
+      if (okp.isEmpty) {
+        None
+      } else {
+        val p = okp.head
+        if (p.pos.toDoubleOption.getOrElse(0.0) == 0) {
+          None
+        } else {
+          Some(
+            Trader.RestPosition(
+              Trader.MarginMode.parseOkx(p.mgnMode),
+              Trader.PositionSide.parseOkx(p.posSide),
+              p.pos.toDouble,
+              p.avgPx.toDouble,
+              p.cTime.toLong,
+              p.uTime.toLong
+            )
+          )
+        }
+      }
+    }
 
   override def positionStream(): ZStream[Any, Throwable, Trader.Position] =
     (stream[Chunk[Okx.Position]](
@@ -399,9 +407,9 @@ class Okx(
 
   override def orderbookStream(depth: Int): ZStream[Any, Throwable, Trader.OrderBook] = {
     val wssUrl = "wss://ws.okx.com:8443/ws/v5/public"
-    val channel = if(depth == 1) {
+    val channel = if (depth == 1) {
       "bbo-tbt"
-    }else {
+    } else {
       throw Exception(s"not supported orderbook depth $depth")
     }
     publicStream[OkOrderBook, Trader.OrderBook](
