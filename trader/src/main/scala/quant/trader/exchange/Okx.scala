@@ -290,7 +290,6 @@ class Okx(
   }
 
   def authHeaders(method: http.Method, path: String, body: String) = {
-    println(path)
     val bodyStr = body
 
     val time    = ZonedDateTime.now().withZoneSameInstant(ZoneId.of("UTC"))
@@ -362,7 +361,7 @@ class Okx(
         }
       }
     }).timed
-      .flatMap(i => ZIO.logInfo(s"$path cost ${i._1.getNano() / 1000 / 1000} ms") *> ZIO.succeed(i._2))
+      .flatMap(i => ZIO.logDebug(s"$path cost ${i._1.getNano() / 1000 / 1000} ms") *> ZIO.succeed(i._2))
   }
 
   def getBalance(ccy: String) = {
