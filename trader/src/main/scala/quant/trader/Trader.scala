@@ -20,6 +20,7 @@ trait Trader {
 
   // 统一使用小写表示
   def getBalance(currency: String): Task[Trader.Balance]
+  def getPosition(): Task[Trader.Position]
 
   // 统一使用小写表示token, 对应交易所实现自行转换拼接为symbol
   def createOrder(
@@ -136,7 +137,6 @@ object Trader {
     case Isolated
     case Cross
   }
-
   case class Position(
     marginMode: MarginMode,
     side: PositionSide,

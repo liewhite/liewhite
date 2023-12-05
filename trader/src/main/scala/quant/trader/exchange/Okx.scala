@@ -81,6 +81,29 @@ class Okx(
     }
   }
 
+  def getPosition(): Task[Trader.Position] = {
+    request[Unit, Seq[Okx.Position]](
+      zio.http.Method.GET,
+      "api/v5/account/positions",
+      Map(
+        "instType" -> "SWAP",
+        "instId" -> exchangeSymbol
+      ),
+      None, 
+      true
+    ).map(okp => {
+      val item = okp.head
+      Trader.Position(
+        Trader.MarginMode.parseOkx(item.mgnMode),
+        Trader.PositionSide.parseOkx(item.posSide),
+        item.pos.toDoubleOption,
+        item.avgPx.toDoubleOption,
+        item.cTime.toLong,
+        item.uTime.toLong
+      )
+    })
+  }
+
   override def positionStream(): ZStream[Any, Throwable, Trader.Position] =
     (stream[Chunk[Okx.Position]](
       "positions",
