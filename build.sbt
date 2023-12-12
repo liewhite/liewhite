@@ -82,9 +82,6 @@ val okHttpDeps = Seq(
   "com.softwaremill.sttp.client3" %% "core"           % "3.6.2",
   "com.softwaremill.sttp.client3" %% "okhttp-backend" % "3.6.2"
 )
-val web3jDeps = Seq(
-  "org.web3j" % "core" % "4.9.8"
-)
 
 lazy val trader = project
   .in(file("trader"))
@@ -100,7 +97,6 @@ lazy val ethers = project
   .settings(
     name := "ethers",
     libraryDependencies ++= okHttpDeps,
-    libraryDependencies ++= web3jDeps,
     libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0"
   )
   .dependsOn(common, json)
