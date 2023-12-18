@@ -2,6 +2,7 @@ package liewhite.ethers.abi
 
 import org.apache.commons.codec.binary.Hex
 import liewhite.ethers.types.Address
+import zio.json.ast.Json
 
 extension (bs: Array[Byte]) {
   // 0扩展， left向左填充， right向右填充
@@ -21,7 +22,6 @@ extension (bs: Array[Byte]) {
   }
   def BytesToHex = "0x" + Hex.encodeHexString(bs)
 }
-
 
 extension (s: String) {
   def hexToBytes = Hex.decodeHex(s.stripPrefix("0x"))
@@ -50,7 +50,11 @@ extension (i: BigInt) {
 @main def testHex =
 
   // val result = ABITypeTuple(Seq(ABITypeInt(256), ABITypeAddress)).encode((1,Address.fromHex("0x8DF04D551E3f7F5B03a67DE79184BB919A97BbDE")))
-  val result = ABITypeTuple(Seq(ABITypeArray(ABITypeInt(256)))).encode( Seq(1, 2, 3) *: EmptyTuple)
+  // val result = ABITypeTuple(Seq(ABITypeArray(ABITypeInt(256)))).encode( Seq(1, 2, 3) *: EmptyTuple)
+  // val result = ABITypeTuple(Seq(ABITypeBytes)).encode( Array.emptyByteArray *: EmptyTuple)
+  val result = ABITypeArray(ABITypeArray(ABITypeString)).encodePacked(Seq(Seq("1","2"), Seq("3","4")))
+  // val result =
+  //   ABITypeTuple(Seq(ABITypeArray(ABITypeUint(256)))).encode(Seq(Json.Arr(Json.Num(1), Json.Num(2), Json.Num(3))))
   // var result = ABITypeAddress.encode("0x8DF04D551E3f7F5B03a67DE79184BB919A97BbDE")
   // println(result.BytesToHex)
   // result = ABITypeAddress.encodePacked("0x8DF04D551E3f7F5B03a67DE79184BB919A97BbDE")
