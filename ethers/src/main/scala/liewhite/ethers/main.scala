@@ -1140,6 +1140,7 @@ val testABI = """[
     "type": "receive"
   }
 ]"""
+
 @main def main = {
     val a = testABI.fromJson[Seq[ABIItem]].toOption.get
     a.foreach(println)

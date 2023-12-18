@@ -97,7 +97,9 @@ lazy val ethers = project
   .settings(
     name := "ethers",
     libraryDependencies ++= okHttpDeps,
-    libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0"
+    libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0",
+    libraryDependencies += "org.web3j" % "core" % "4.10.3",
+    libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
   )
   .dependsOn(common, json)
 

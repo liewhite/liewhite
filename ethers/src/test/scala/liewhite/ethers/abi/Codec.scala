@@ -1,0 +1,52 @@
+package liewhite.ethers.abi
+
+import liewhite.ethers.types.Address
+
+case class A(a: Int, b: String = "123")
+class CodecTest extends munit.FunSuite {
+  test("int codec") {
+    val intEncode = ABITypeInt(8).encode(1)
+    assertEquals(intEncode.toSeq, "0x0000000000000000000000000000000000000000000000000000000000000001".hexToBytes.toSeq)
+    val uintEncode = ABITypeUint(8).encode(1)
+    assertEquals(
+      uintEncode.toSeq,
+      "0x0000000000000000000000000000000000000000000000000000000000000001".hexToBytes.toSeq
+    )
+    intercept[ABIException] {
+      ABITypeInt(8).encode(128)
+    }
+    val bigIntEncode = ABITypeInt(8).encode(127)
+    assertEquals(
+      bigIntEncode.toSeq,
+      "0x000000000000000000000000000000000000000000000000000000000000007f".hexToBytes.toSeq
+    )
+
+    val negIntEncode = ABITypeInt(8).encode(-128)
+    assertEquals(
+      negIntEncode.toSeq,
+      "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80".hexToBytes.toSeq
+    )
+    intercept[ABIException] {
+      ABITypeInt(8).encode(-129)
+    }
+  }
+
+  test("simple tuple codec") {
+    val tupleBs = ABITypeTuple(Seq(ABITypeInt(8), ABITypeAddress))
+      .encode(1 -> Address.fromHex("0xe9a97B0798b1649045c1D7114F8C432846828404"))
+    assertEquals(
+      tupleBs.toSeq,
+      "0x0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000e9a97b0798b1649045c1d7114f8c432846828404".hexToBytes.toSeq
+    )
+  }
+
+  test("dynamic array codec") {
+    val tupleBs = ABITypeTuple(Seq(ABITypeArray(ABITypeInt(8)), ABITypeArray(ABITypeBytes)))
+      .encode( (Seq(1,2,3), Seq("0xff")) )
+    assertEquals(
+      tupleBs.toSeq,
+      "0x000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001ff00000000000000000000000000000000000000000000000000000000000000".hexToBytes.toSeq
+    )
+  }
+
+}
