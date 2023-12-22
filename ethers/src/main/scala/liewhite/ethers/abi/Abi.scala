@@ -5,6 +5,7 @@ import zio.schema
 import scala.util.Try
 import liewhite.ethers.types.Address
 import liewhite.json.{*, given}
+import zio.Chunk
 
 trait ABIType {
   def toString(): String
@@ -135,7 +136,6 @@ case object ABITypeBytes extends ABIType {
   }
 }
 
-
 case object ABITypeAddress extends ABIType {
 
   override def encodePacked(params: Any): Array[Byte] = {
@@ -152,9 +152,9 @@ case object ABITypeAddress extends ABIType {
 
   def encode(params: Any): Array[Byte] =
     encodePacked(params).alignLength(32, "left")
-    
+
   override def decode(bs: Array[Byte]): Json =
-    Json.Str(bs.take(20).BytesToHex)
+    Json.Str(Address.fromBytes(bs.drop(12).take(20)).checkSumAddress)
 }
 
 case object ABITypeString extends ABIType {
@@ -173,15 +173,15 @@ case object ABITypeString extends ABIType {
     ABITypeUint(256).encode(content.length) ++ content.alignLength()
 
   override def decode(bs: Array[Byte]): Json = {
-    val length = ABITypeUint(256).decode(bs.take(32)).asNumber.get.value.toBigInteger().intValue()
-    Json.Str(bs.drop(32).take(length).BytesToHex)
+    val length = ABITypeUint(256).decode(bs.take(32)).asNumber.get.value.intValue()
+    Json.Str(String(bs.drop(32).take(length)))
   }
 }
 
 case class ABITypeSizedArray(elem: ABIType, size: Int) extends ABIType {
-  override def headLength: Int = if(!elem.isDynamic) {
+  override def headLength: Int = if (!elem.isDynamic) {
     elem.headLength * size
-  }else {
+  } else {
     32
   }
 
@@ -201,13 +201,12 @@ case class ABITypeSizedArray(elem: ABIType, size: Int) extends ABIType {
       case seq: Seq[Any] => seq
       case Json.Arr(vs)  => vs
     }
-    ABITypeTuple(List.fill(elems.length)(elem))
+    ABITypeTuple(List.fill(elems.length)(elem)*)
       .encode(Tuple.fromArray(elems.toArray))
 
-  override def decode(bs: Array[Byte]): Json = {
-    val length = ABITypeUint(256).decode(bs.take(32))
-    ???
-  }
+  override def decode(bs: Array[Byte]): Json =
+    ABITypeTuple(List.fill(size)(elem)*)
+      .decode(bs)
 }
 
 case class ABITypeArray(elem: ABIType) extends ABIType {
@@ -228,16 +227,17 @@ case class ABITypeArray(elem: ABIType) extends ABIType {
       case seq: Seq[Any] => seq
       case Json.Arr(vs)  => vs
     }
-    ABITypeUint(256).encode(elems.length) ++ ABITypeTuple(List.fill(elems.length)(elem))
+    ABITypeUint(256).encode(elems.length) ++ ABITypeTuple(List.fill(elems.length)(elem)*)
       .encode(Tuple.fromArray(elems.toArray))
   }
   override def decode(bs: Array[Byte]): Json = {
-    val length = ABITypeUint(256).decode(bs.take(32))
-    ???
+    val length = ABITypeUint(256).decode(bs.take(32)).asNumber.get.value.intValue()
+    ABITypeTuple(List.fill(length)(elem)*)
+      .decode(bs.drop(32))
   }
 }
 
-case class ABITypeTuple(elems: Seq[ABIType]) extends ABIType {
+case class ABITypeTuple(elems: ABIType*) extends ABIType {
 
   override def headLength: Int = if (isDynamic) {
     32
@@ -253,9 +253,12 @@ case class ABITypeTuple(elems: Seq[ABIType]) extends ABIType {
       case seq: Seq[_]  => seq
       case Json.Arr(vs) => vs
     }
-    (elems.zip(args).map{
-      case (tp,data) => tp.encodePacked(data)
-    }).reduce(_ ++ _)
+    (elems
+      .zip(args)
+      .map { case (tp, data) =>
+        tp.encodePacked(data)
+      })
+      .reduce(_ ++ _)
 
   }
 
@@ -291,8 +294,25 @@ case class ABITypeTuple(elems: Seq[ABIType]) extends ABIType {
     heads.reduce(_ ++ _) ++ tail.reduce(_ ++ _)
   }
   override def decode(bs: Array[Byte]): Json = {
-    val length = ABITypeUint(256).decode(bs.take(32))
-    ???
+    // 先读取heads
+    // val headsLength = elems.map(_.headLength).sum
+    // val (heads,tails) = bs.splitAt(headsLength)
+    // val length = ABITypeUint(256).decode(bs.take(32))
+    val result = elems.foldLeft((0, Chunk.empty[Json])) { (acc, item) =>
+      val headStartIndex = acc._1
+      val headLength     = item.headLength
+      val head           = bs.slice(headStartIndex, headStartIndex + headLength)
+      val result = if (item.isDynamic) {
+        // head就是body的开始位置
+        val tailIndex = BigInt(head).intValue
+        item.decode(bs.drop(tailIndex))
+      } else {
+        // 静态类型直接在当前位置decode
+        item.decode(head)
+      }
+      (acc._1 + headLength, acc._2.appended(result))
+    }
+    Json.Arr(result._2)
   }
 }
 
@@ -344,7 +364,7 @@ object ABIType {
 
   def parseTuple(s: String): ABIType = {
     val items = s.drop(1).dropRight(1).split(",").map(parseType(_))
-    ABITypeTuple(items)
+    ABITypeTuple(items*)
   }
   def parseInt(s: String): ABIType = {
     val size = s.drop(3).toInt
