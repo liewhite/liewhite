@@ -10,14 +10,17 @@ import zio.json.JsonDecoder
 import zio.schema.codec.JsonCodec.JsonEncoder
 import zio.schema.codec.JsonCodec.JsonDecoder
 import zio.schema.annotation.*
+import org.apache.commons.codec.binary.Hex
+import scala.util.Try
 
 export zio.schema.Schema
 export zio.schema.derived
 export zio.json.ast.Json
 
 extension [T: Schema](s: T) {
-  def toJson    = JsonCodec.JsonEncoder.encode(summon[Schema[T]], s, JsonCodec.Config.default)
-  def toJsonAst = JsonCodec.JsonEncoder.encode(summon[Schema[T]], s, JsonCodec.Config.default).fromJson[Json].toOption.get
+  def toJson = JsonCodec.JsonEncoder.encode(summon[Schema[T]], s, JsonCodec.Config.default)
+  def toJsonAst =
+    JsonCodec.JsonEncoder.encode(summon[Schema[T]], s, JsonCodec.Config.default).fromJson[Json].toOption.get
 }
 
 extension (s: String) {
@@ -51,6 +54,17 @@ given Schema[Json] = dynamicSchema.transformOrFail(
     val str = zio.json.JsonEncoder[Json].encodeJson(b).toString()
     val s   = zio.schema.codec.JsonCodec.JsonDecoder.decode(dynamicSchema, str.toString()).left.map(_.toString())
     s
+  }
+)
+
+given Schema[Array[Byte]] = Schema[String].transformOrFail(
+  a => {
+    Try {
+      Hex.decodeHex(a.stripPrefix("0x"))
+    }.toEither.left.map(_.getMessage())
+  },
+  b => {
+    Right("0x" + Hex.encodeHexString(b))
   }
 )
 extension (j: Json) {

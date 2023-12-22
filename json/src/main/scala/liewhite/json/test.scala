@@ -35,7 +35,7 @@ case class Y() derives Schema
    println("\"C1\"".fromJson[Constant])
 
    println(Vector(Json.Num(1.1),Json.Bool(false)).toJson.asString)
-   println(A(1,"asd").toJson.asString)
+   println(A[Boolean](1,"asd").toJson)
    println((E.E1(1):E).toJson.asString)
    println(X(Map.empty).toJson.asString)
    println(Y().toJson.asString)

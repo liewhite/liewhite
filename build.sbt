@@ -21,7 +21,8 @@ lazy val json = project
   .in(file("json"))
   .settings(
     name := "json",
-    libraryDependencies ++= zioSchemaDeps
+    libraryDependencies ++= zioSchemaDeps,
+    libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0",
   )
 
 lazy val common = project
