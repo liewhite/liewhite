@@ -1,2 +1,0 @@
-package liewhite.ethers.abi
-

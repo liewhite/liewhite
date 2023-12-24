@@ -1,9 +1,9 @@
 package liewhite.ethers.types
 
-import liewhite.ethers.abi.*
 import org.web3j.crypto.Keys
 import zio.schema.Schema
 import scala.util.Try
+import liewhite.ethers.*
 
 case class Address(bs: Array[Byte]) {
   def checkSumAddress: String =

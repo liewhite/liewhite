@@ -6,6 +6,7 @@ import scala.util.Try
 import liewhite.ethers.types.Address
 import liewhite.json.{*, given}
 import zio.Chunk
+import liewhite.ethers.*
 
 trait ABIType {
   def toString(): String

@@ -100,6 +100,7 @@ lazy val ethers = project
     libraryDependencies ++= okHttpDeps,
     libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0",
     libraryDependencies += "org.web3j" % "core" % "4.10.3",
+    libraryDependencies += "dev.zio" %% "zio-http" % "3.0.0-RC4",
     libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
   )
   .dependsOn(common, json)

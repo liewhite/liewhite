@@ -1,4 +1,4 @@
-package liewhite.ethers.abi
+package liewhite.ethers
 
 import org.apache.commons.codec.binary.Hex
 import liewhite.ethers.types.Address
@@ -30,6 +30,8 @@ extension (bs: Array[Byte]) {
 
 extension (s: String) {
   def hexToBytes = Hex.decodeHex(s.stripPrefix("0x"))
+  def hexToUint  = BigInt(s.hexToBytes.prepended(0.toByte))
+  def hexToInt   = BigInt(s.hexToBytes)
 }
 
 extension (i: BigInt) {
@@ -50,18 +52,14 @@ extension (i: BigInt) {
     }
     baseBytes ++ bs
   }
+  def toHex: String =
+    "0x" + i.toString(16)
+
 }
 
-@main def testHex =
-  val codec = ABITypeTuple(
-    ABITypeArray(ABITypeSizedArray(ABITypeTuple(ABITypeBool, ABITypeBytes), 3)),
-    ABITypeSizedArray(ABITypeSizedBytes(32), 3)
-  )
-  val data = (
-    Seq(Seq((true, "abc".getBytes()), (true, "123".getBytes()), (false, "ooo".getBytes()))),
-    Seq("0xff".hexToBytes, "0x11".getBytes(), "0x00".getBytes())
-  )
-  val encoding = codec.encode(data).BytesToHex
-  val decoding = codec.decode(encoding.hexToBytes)
-  println(encoding)
-  println(decoding)
+@main def mmm = {
+  val hex = "0xffff"
+  println(hex.hexToInt)
+  println(hex.hexToUint)
+
+}
