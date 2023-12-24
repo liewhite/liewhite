@@ -19,8 +19,17 @@ case class JsonRpcRequest(
 
 import zio.schema.annotation.noDiscriminator
 
-@noDiscriminator
-enum BlockNumber derives Schema {
-  case latest
-  case Number(n: HexUint)
+object JsonRpcRequest{
+  @noDiscriminator
+  enum BlockNumber derives Schema {
+    case latest
+    case Number(n: HexUint)
+  }
+}
+
+object JsonRpcResponse{
+  case class Block(
+
+  ) derives Schema
+
 }

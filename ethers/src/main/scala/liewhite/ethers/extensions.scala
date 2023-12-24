@@ -25,13 +25,16 @@ extension (bs: Array[Byte]) {
       }
     }
   }
-  def BytesToHex = "0x" + Hex.encodeHexString(bs)
+  def bytesToHex = "0x" + Hex.encodeHexString(bs)
+
+  def bytesToInt  = BigInt(bs)
+  def bytesToUint = BigInt(bs.prepended(0.toByte))
+
 }
 
 extension (s: String) {
   def hexToBytes = Hex.decodeHex(s.stripPrefix("0x"))
-  def hexToUint  = BigInt(s.hexToBytes.prepended(0.toByte))
-  def hexToInt   = BigInt(s.hexToBytes)
+  def hexToUint  = BigInt(s.stripPrefix("0x"), 16)
 }
 
 extension (i: BigInt) {
@@ -52,14 +55,15 @@ extension (i: BigInt) {
     }
     baseBytes ++ bs
   }
+
   def toHex: String =
     "0x" + i.toString(16)
 
 }
 
 @main def mmm = {
-  val hex = "0xffff"
-  println(hex.hexToInt)
+  val hex = "0xc70d815d562d3cfa955"
   println(hex.hexToUint)
+  println(BigInt(BigInt(1).toHex.stripPrefix("0x"), 16))
 
 }

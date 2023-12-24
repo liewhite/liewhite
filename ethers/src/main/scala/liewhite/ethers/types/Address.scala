@@ -7,7 +7,7 @@ import liewhite.ethers.*
 
 case class Address(bs: Array[Byte]) {
   def checkSumAddress: String =
-    Keys.toChecksumAddress(bs.BytesToHex)
+    Keys.toChecksumAddress(bs.bytesToHex)
 }
 
 object Address {

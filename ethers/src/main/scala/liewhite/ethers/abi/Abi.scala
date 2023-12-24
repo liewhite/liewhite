@@ -91,7 +91,7 @@ case object ABITypeBool extends ABIType {
     } else if (value == 1) {
       Json.Bool(true)
     } else {
-      throw ABIException(s"invalid bool value: ${bs.BytesToHex}")
+      throw ABIException(s"invalid bool value: ${bs.bytesToHex}")
     }
   }
 }
@@ -113,7 +113,7 @@ case class ABITypeSizedBytes(size: Int) extends ABIType {
   override def toString(): String      = s"bytes$size"
   def encode(params: Any): Array[Byte] = encodePacked(params).alignLength()
   override def decode(bs: Array[Byte]): Json =
-    Json.Str(bs.take(size).BytesToHex)
+    Json.Str(bs.take(size).bytesToHex)
 }
 
 case object ABITypeBytes extends ABIType {
@@ -133,7 +133,7 @@ case object ABITypeBytes extends ABIType {
     }
   override def decode(bs: Array[Byte]): Json = {
     val length = ABITypeUint(256).decode(bs.take(32)).asNumber.get.value.toBigInteger().intValue()
-    Json.Str(bs.drop(32).take(length).BytesToHex)
+    Json.Str(bs.drop(32).take(length).bytesToHex)
   }
 }
 

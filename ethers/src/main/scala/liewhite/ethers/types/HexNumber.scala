@@ -18,7 +18,7 @@ object HexUint {
     str => {
       Try {
         HexUint(str)
-      }.toEither.left.map(_.getMessage())
+      }.toEither.left.map(_.getMessage() + str)
     },
     tp => {
       Right(tp.i.toHex)
