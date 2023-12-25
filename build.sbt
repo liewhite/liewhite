@@ -7,6 +7,7 @@ ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
 ThisBuild / publishTo              := sonatypePublishToBundle.value
 sonatypeCredentialHost             := "s01.oss.sonatype.org"
 ThisBuild / sonatypeRepository     := "https://s01.oss.sonatype.org/service/local"
+ThisBuild / scalacOptions += "-Yretain-trees"
 
 val zioVersion       = "2.0.19"
 val zioSchemaVersion = "0.4.16"
@@ -22,15 +23,16 @@ lazy val json = project
   .settings(
     name := "json",
     libraryDependencies ++= zioSchemaDeps,
-    libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0",
+    libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0"
   )
+  .dependsOn(common)
 
 lazy val common = project
   .in(file("common"))
   .settings(
     name                                   := "common",
     libraryDependencies += "org.typelevel" %% "shapeless3-deriving" % "3.3.0",
-    libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0",
+    libraryDependencies += "commons-codec"  % "commons-codec"       % "1.16.0",
     libraryDependencies += "dev.zio"       %% "zio"                 % zioVersion,
     libraryDependencies ++= zioSchemaDeps,
     libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
@@ -89,7 +91,7 @@ lazy val trader = project
   .settings(
     name := "trader",
     libraryDependencies ++= okHttpDeps,
-    libraryDependencies += "dev.zio" %% "zio-http" % "3.0.0-RC4",
+    libraryDependencies += "dev.zio" %% "zio-http" % "3.0.0-RC4"
   )
   .dependsOn(common, json)
 
@@ -98,10 +100,10 @@ lazy val ethers = project
   .settings(
     name := "ethers",
     libraryDependencies ++= okHttpDeps,
-    libraryDependencies += "commons-codec" % "commons-codec" % "1.16.0",
-    libraryDependencies += "org.web3j" % "core" % "4.10.3",
-    libraryDependencies += "dev.zio" %% "zio-http" % "3.0.0-RC4",
-    libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
+    libraryDependencies += "commons-codec"  % "commons-codec" % "1.16.0",
+    libraryDependencies += "org.web3j"      % "core"          % "4.10.3",
+    libraryDependencies += "dev.zio"       %% "zio-http"      % "3.0.0-RC4",
+    libraryDependencies += "org.scalameta" %% "munit"         % "0.7.29" % Test
   )
   .dependsOn(common, json)
 

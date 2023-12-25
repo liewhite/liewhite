@@ -62,8 +62,6 @@ extension (i: BigInt) {
 }
 
 @main def mmm = {
-  val hex = "0xc70d815d562d3cfa955"
-  println(hex.hexToUint)
-  println(BigInt(BigInt(1).toHex.stripPrefix("0x"), 16))
-
+  val x: Either[Int, String] = Right("xx")
+  println(x.toJson.asString.fromJson[Either[Int,String]])
 }

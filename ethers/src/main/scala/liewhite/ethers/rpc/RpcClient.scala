@@ -4,13 +4,17 @@ import zio.json.ast.Json
 import zio.http.*
 import liewhite.json.{*, given}
 import java.net.URI
+import liewhite.ethers.types.HexUint
+import liewhite.ethers.types.Address
+import liewhite.ethers.bytesToHex
+import liewhite.ethers.hexToBytes
 
 class RpcClient(val client: Client, id: Ref[Long]) {
-  def request[O: Schema](method: String, params: Seq[Json]): ZIO[Scope, Throwable, O] =
+  def request[I: Schema, O: Schema](method: String, params: I): ZIO[Any, Throwable, O] =
     ZIO.scoped {
       for {
         reqId  <- id.getAndUpdate(_ + 1)
-        req     = JsonRpcRequest(reqId, "2.0", method, params)
+        req     = JsonRpcRequest(reqId, "2.0", method, params.toJsonAst)
         res    <- client.post("")(Body.fromString(req.toJson.asString))
         body   <- res.body.asString
         parsed <- ZIO.fromEither(body.fromJson[JsonRpcResponse[O]])
@@ -25,30 +29,97 @@ class RpcClient(val client: Client, id: Ref[Long]) {
 
     }
 
-  def eth_gasPrice() =
-    request[Json](
+  def eth_chainId(): ZIO[Any, Throwable, HexUint] =
+    request[Seq[Unit], HexUint](
       "eth_gasPrice",
-      Seq.empty[Json]
+      Seq.empty[Unit]
+    )
+  def eth_gasPrice(): ZIO[Any, Throwable, HexUint] =
+    request[Seq[Unit], HexUint](
+      "eth_gasPrice",
+      Seq.empty[Unit]
+    )
+  def eth_blockNumber(): ZIO[Any, Throwable, HexUint] =
+    request[Seq[Unit], HexUint](
+      "eth_blockNumber",
+      Seq.empty[Unit]
+    )
+  def eth_getBalance(
+    address: Address,
+    blockNumber: BlockNumberOrTag = BlockNumberOrTag.Tag(BlockNumberTag.latest)
+  ): ZIO[Any, Throwable, HexUint] =
+    request[(Address, BlockNumberOrTag), HexUint](
+      "eth_getBalance",
+      (address, blockNumber)
+    )
+  def eth_getStorageAt(
+    address: Address,
+    position: HexUint,
+    blockNumber: BlockNumberOrTag = BlockNumberOrTag.Tag(BlockNumberTag.latest)
+  ): ZIO[Any, Throwable, Array[Byte]] =
+    request[Json, Array[Byte]](
+      "eth_getStorageAt",
+      Json.Arr(address.toJsonAst, position.toJsonAst, blockNumber.toJsonAst)
+    )
+  def eth_getTransactionCount(
+    address: Address,
+    blockNumber: BlockNumberOrTag = BlockNumberOrTag.Tag(BlockNumberTag.latest)
+  ) =
+    request[(Address, BlockNumberOrTag), HexUint](
+      "eth_getTransactionCount",
+      (address, blockNumber)
+    )
+
+  def eth_getCode(
+    address: Address,
+    blockNumber: BlockNumberOrTag = BlockNumberOrTag.Tag(BlockNumberTag.latest)
+  ) =
+    request[(Address, BlockNumberOrTag), Array[Byte]](
+      "eth_getCode",
+      (address, blockNumber)
+    )
+
+  def eth_sendRawTransaction(
+    txs: Seq[Array[Byte]]
+  ) =
+    request[Seq[Array[Byte]], Array[Byte]](
+      "eth_sendRawTransaction",
+      txs
+    )
+
+  def eth_call(
+    call: TransactionCall,
+    blockNumber: BlockNumberOrTag = BlockNumberOrTag.Tag(BlockNumberTag.latest)
+  ) =
+    request[(TransactionCall, BlockNumberOrTag), Array[Byte]](
+      "eth_call",
+      (call, blockNumber)
+    )
+  def eth_estimateGas(
+    call: TransactionCall,
+    blockNumber: BlockNumberOrTag = BlockNumberOrTag.Tag(BlockNumberTag.latest)
+  ) =
+    request[(TransactionCall, BlockNumberOrTag), HexUint](
+      "eth_estimateGas",
+      (call, blockNumber)
     )
 
   def eth_getBlockByNumber(
-    blockNumber: JsonRpcRequest.BlockNumber,
+    blockNumber: BlockNumberOrTag,
     withTxs: Boolean = true
-  ): ZIO[Scope, Throwable, Block] =
-    blockNumber match
-      case JsonRpcRequest.BlockNumber.latest => {
-        request[Block](
-          "eth_getBlockByNumber",
-          Seq("latest".toJsonAst, withTxs.toJsonAst)
-        )
-      }
-      case JsonRpcRequest.BlockNumber.Number(n) => {
-        request[Block](
-          "eth_getBlockByNumber",
-          Seq(n.toJsonAst, withTxs.toJsonAst)
-        )
-
-      }
+  ) =
+    request[(BlockNumberOrTag, Boolean), Block](
+      "eth_getBlockByNumber",
+      (blockNumber, withTxs)
+    )
+  def eth_getBlockByHash(
+    blockNumber: BlockNumberOrTag,
+    withTxs: Boolean = true
+  ) =
+    request[(BlockNumberOrTag, Boolean), Block](
+      "eth_getBlockByHash",
+      (blockNumber, withTxs)
+    )
 }
 
 object RpcClient {
@@ -59,7 +130,6 @@ object RpcClient {
       cli            = default.url(uri)
       cliWithHeaders = cli.addHeader(Header.ContentType(MediaType.application.json))
       id            <- Ref.make(0L)
-
     } yield new RpcClient(cliWithHeaders, id))
       .provideLayer(
         Client.default.extendScope
@@ -73,26 +143,8 @@ object TestRpc extends ZIOAppDefault {
     val cli = RpcClient("https://eth-hk1.csnodes.com/v1/973eeba6738a7d8c3bd54f91adcbea89")
     val e1 = (for {
       cli <- RpcClient(url)
-      blk <- cli.eth_getBlockByNumber(JsonRpcRequest.BlockNumber.latest, false).map(_.toJsonAst).debug
-      _ <- cli.eth_getBlockByNumber(JsonRpcRequest.BlockNumber.latest, false).map(_.toJsonAst).debug
+      blk <- cli.eth_getBlockByNumber(BlockNumberOrTag.Tag(BlockNumberTag.latest), false).map(_.transactions.toJsonAst).debug("block: ")
+      // _   <- cli.eth_getBlockByNumber(BlockNumberOrTag.Number(HexUint(10)), false).map(_.toJsonAst).debug
     } yield ())
     e1
-}
-
-object SimpleClient extends ZIOAppDefault {
-
-  val program = (for {
-    client        <- ZIO.service[Client]
-    uri           <- ZIO.fromEither(URL.decode("https://eth-hk1.csnodes.com/v1/973eeba6738a7d8c3bd54f91adcbea89"))
-    cli            = client.url(uri)
-    cliWithHeaders = cli.addHeader(Header.ContentType(MediaType.application.json))
-    req            = JsonRpcRequest(0, "2.0", "eth_getBlockByNumber", Seq(Json.Num(1)))
-    res <- cliWithHeaders
-             .post("")(Body.fromString(req.toJson.asString))
-    data <- res.body.asString
-    _    <- Console.printLine(data)
-  } yield ()).provideSomeLayer(Client.default)
-
-  override def run: ZIO[Any & (ZIOAppArgs & Scope), Any, Any] =
-    program
 }
