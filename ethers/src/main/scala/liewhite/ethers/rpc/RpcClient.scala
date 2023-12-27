@@ -215,7 +215,6 @@ class WebsocketClient(val url: String, id: Ref[Long]) {
       }
 
     })
-
 }
 
 object WebsocketClient {

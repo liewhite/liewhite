@@ -70,6 +70,7 @@ case class AccessList(
   address: Address,
   storageKeys: Seq[Array[Byte]]
 ) derives Schema
+
 case class Transaction(
   `type` : HexUint, 
   blockHash: Option[Array[Byte]],
