@@ -46,6 +46,7 @@ extension (s: Chunk[Byte]) {
  */
 val dynamicSchema = Schema.dynamicValue.annotate(directDynamicMapping())
 
+// given [T: Schema]: Schema[Tuple1[T]] = Schema[Seq[T]].transform(f => {}, g => {})
 given Schema[Json] = dynamicSchema.transformOrFail(
   a => {
     zio.json
@@ -75,15 +76,15 @@ extension (j: Json) {
 
 given [T](using l: Schema[List[T]]): Schema[Seq[T]] = l.transform(l => l.toSeq, s => s.toList)
 
-given [L:Schema,R:Schema]: Schema[Either[L,R]] = Schema[Json].transformOrFail(
+given [L: Schema, R: Schema]: Schema[Either[L, R]] = Schema[Json].transformOrFail(
   j => {
     j.asType[L] match
-      case Left(value) => j.asType[R].map(Right(_))
+      case Left(value)  => j.asType[R].map(Right(_))
       case Right(value) => Right(Left(value))
   },
   lr => {
     lr match
-      case Left(value) => Right(value.toJsonAst)
+      case Left(value)  => Right(value.toJsonAst)
       case Right(value) => Right(value.toJsonAst)
   }
 )
