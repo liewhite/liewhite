@@ -12,7 +12,6 @@ import zio.schema.codec.JsonCodec.JsonDecoder
 import zio.schema.annotation.*
 import org.apache.commons.codec.binary.Hex
 import scala.util.Try
-import liewhite.common.union.*
 import scala.reflect.TypeTest
 
 export zio.schema.Schema
@@ -89,4 +88,3 @@ given [L: Schema, R: Schema]: Schema[Either[L, R]] = Schema[Json].transformOrFai
   }
 )
 
-// inline given derivedUnion[A](using IsUnion[A]): Schema[A] = UnionDerivation.derive[Schema, A]
