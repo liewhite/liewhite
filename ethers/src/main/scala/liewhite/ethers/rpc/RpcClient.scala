@@ -12,6 +12,11 @@ import java.util.concurrent.TimeUnit
 import okhttp3.*
 import okhttp3.internal.http2.Header
 import zio.schema.codec.DecodeError
+import liewhite.ethers.abi.ABITypeAddress
+import liewhite.ethers.*
+import liewhite.ethers.abi.ABIFunction
+import liewhite.ethers.abi.ABITypeTuple
+import liewhite.ethers.abi.ABITypeUint
 
 class RpcClient(val url: String, id: Ref[Long], proxy: Option[java.net.Proxy] = None) {
   val clientBuilder = okhttp3.OkHttpClient.Builder()
@@ -229,11 +234,24 @@ object TestRpc extends ZIOAppDefault {
     val url = "https://eth-hk1.csnodes.com/v1/973eeba6738a7d8c3bd54f91adcbea89"
     val wss = "wss://eth-hk1.csnodes.com/ws/v1/973eeba6738a7d8c3bd54f91adcbea89"
 
+    val balanceOf = ABIFunction("balanceOf", ABITypeTuple(ABITypeAddress), ABITypeUint(256))
+    val data = balanceOf.encodeInput(Tuple(Address.fromHex("0x151D6C9C114976cFc0baA8F9B3291AfBea9f3549")))
+    
     val e1 = (for {
-      // cli   <- RpcClient(url)
-      wsCli <- WebsocketClient(wss)
-      ws    = wsCli.newLogs(LogFilter(None, Seq.empty))
-      _     <- ws.map(_.toJson.asString).debug.runDrain
+      cli <- RpcClient(url)
+      balance <- cli
+                   .eth_call(
+                     TransactionCall(
+                       "0x151D6C9C114976cFc0baA8F9B3291AfBea9f3549",
+                       Some("0xdAC17F958D2ee523a2206206994597C13D831ec7"),
+                       data = Some(data)
+                     )
+                   )
+                   .map(balanceOf.decodeOutput(_))
+                   .debug
+      // wsCli <- WebsocketClient(wss)
+      // ws     = wsCli.newLogs(LogFilter(None, Seq.empty))
+      // _     <- ws.map(_.toJson.asString).debug.runDrain
       // logs <- ZIO.withParallelism(10)(ZIO.collectAllPar(blks.flatten.map(cli.eth_getTransactionReceipt(_).debug)))
       // _ = ZIO.collectAll(blks.map(b => ZIO.log(s"${b.transactions.length}"))).debug
       // _   <- cli.eth_getBlockByNumber(BlockNumberOrTag.Number(HexUint(10)), false).map(_.toJsonAst).debug

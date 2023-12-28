@@ -28,11 +28,10 @@ case class X(m: Map[String, String]) derives Schema
 case class Y() derives Schema
 case class XX(a:Int = 100,b:Int, c: Int = 200, d: Int, e: Int = 300) derives Schema
 case class WithDefaultValue(orderId: Int,  description: String = "desc") derives Schema
+// case class Op(a: Option[Int]) derives Schema
 
 @main def main = {
-    Schema[Tuple2[Int,String]]
-    // println(Tuple(1).toJson)
-    
+    println("""{"orderId": 2}""".fromJson[WithDefaultValue])
 
 //    println("""{"a":1,"b": "xx"}""".fromJson[A[Boolean]].toOption.get.toJson.asString)
 //    println("""{"b":"asd"}""".fromJson[E])

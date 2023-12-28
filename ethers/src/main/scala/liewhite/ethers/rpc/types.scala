@@ -162,17 +162,16 @@ case class Header(
   timestamp: HexUint,
   transactionsRoot: Array[Byte],
   hash: Array[Byte],
-
-  // size: HexUint,
-  // transactions: Seq[Either[Array[Byte], Transaction]],
-  // uncles: Seq[Array[Byte]]
 ) derives Schema
 
 case class TransactionCall(
-  from: Option[Address],
-  to: Address,
-  gas: Option[HexUint],
-  gasPrice: Option[HexUint],
-  value: Option[HexUint],
-  input: Option[Array[Byte]]
+  from: Address,
+  to: Option[Address] = None, // 没有用call部署合约的
+  value: HexUint = 0,
+  data: Option[Array[Byte]]=None,
+  gas: Option[HexUint] = None,
+  gasPrice: Option[HexUint] = None,
+  maxPriorityFeePerGas: Option[HexUint] = None,
+  maxFeePerGas: Option[HexUint] = None,
+  chainId: Option[HexUint] = None
 ) derives Schema

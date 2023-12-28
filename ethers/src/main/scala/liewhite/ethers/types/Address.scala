@@ -30,4 +30,12 @@ object Address {
       Right(tp.checkSumAddress)
     }
   )
+
+  given Conversion[String, Address] with {
+    def apply(x: String): Address = Address.fromHex(x)
+  }
+  given Conversion[Array[Byte], Address] with {
+    def apply(x: Array[Byte]): Address = Address.fromBytes(x)
+  }
+
 }

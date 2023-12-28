@@ -10,7 +10,7 @@ ThisBuild / sonatypeRepository     := "https://s01.oss.sonatype.org/service/loca
 ThisBuild / scalacOptions += "-Yretain-trees"
 
 val zioVersion       = "2.0.19"
-val zioSchemaVersion = "0.4.16"
+val zioSchemaVersion = "0.4.17"
 
 val zioSchemaDeps = Seq(
   "dev.zio" %% "zio-schema"            % zioSchemaVersion,
