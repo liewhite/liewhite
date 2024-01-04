@@ -137,13 +137,13 @@ class Okx(
           item.ordId,
           item.clOrdId,
           Trader.OrderAction.parse(item.side),
-          item.avgPx.toDouble,
-          item.px.toDouble,
-          item.sz.toDouble,
-          item.fillSz.toDouble,
+          item.avgPx.toDoubleOption.getOrElse(0.0),
+          item.px.toDoubleOption.getOrElse(0.0),
+          item.sz.toDoubleOption.getOrElse(0.0),
+          item.fillSz.toDoubleOption.getOrElse(0.0),
           Trader.OrderState.parseOkx(item.state),
           Trader.OrderType.parseOkx(item.ordType, item.px),
-          item.fee.toDouble,
+          item.fee.toDoubleOption.getOrElse(0.0),
           item.cTime.toLong,
           item.uTime.toLong
         )
