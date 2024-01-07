@@ -16,7 +16,6 @@ import java.util.concurrent.TimeUnit
 import java.net.InetSocketAddress
 import java.net.URL
 import zio.schema.codec.DecodeError
-import quant.trader.Trader.Kline
 
 class Okx(
   val baseToken: String,
@@ -57,6 +56,15 @@ class Okx(
       val result = data(0)
       Trader.SymbolInfo(1, result("tickSz").toDouble, result("ctVal").toDouble)
     }
+  def setLeverage(leverage: Int, tp: Trader.MarginMode): Task[Unit] =
+    request[Okx.SetLeverageReq, Json](
+      zio.http.Method.POST,
+      "api/v5/account/set-leverage",
+      Map.empty,
+      Some(Okx.SetLeverageReq(exchangeSymbol, leverage.toString(), tp.toString().toLowerCase())),
+      true
+    ).unit
+
   def klines(interval: String, limit: Int = 100): Task[Seq[Trader.Kline]] = {
     val result = request[Unit, Seq[Seq[String]]](
       zio.http.Method.GET,
@@ -389,7 +397,7 @@ class Okx(
       f"candle$interval",
       k => {
         Right(
-          Kline(
+          Trader.Kline(
             k(0).toLong,
             k(1).toDouble,
             k(3).toDouble,
@@ -659,6 +667,12 @@ object Okx {
       sMsg: String
     ) derives Schema
   }
+
+  case class SetLeverageReq(
+    instId: String,
+    lever: String,
+    mgnMode: String
+  ) derives Schema
 
   case class CreateOrderRequest(
     side: String,

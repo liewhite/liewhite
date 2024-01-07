@@ -3,9 +3,7 @@ import zio.stream.*
 import liewhite.json.{*, given}
 
 object Metrics {
-  case class Ma(ts: Long, price: Double, end: Boolean) derives Schema {
-
-  }
+  case class Ma(ts: Long, price: Double, end: Boolean) derives Schema 
 
   def ma(n: Int, klines: ZStream[Any, Throwable, Trader.Kline]): ZStream[Any, Throwable, Ma] = {
     klines
@@ -17,12 +15,12 @@ object Metrics {
         }
         val klinesWithLast = klines.appended(kline).takeRight(n)
         val result = klinesWithLast.map(_.close).sum / klinesWithLast.length
-        (newKlines.takeRight(20), Ma(kline.ts, result, kline.end))
+        (newKlines.takeRight(n-1), Ma(kline.ts, result, kline.end))
       )
 
   }
 
-  case class Kdj(ts: Long, rsv: Double, k: Double, d: Double, j: Double, end: Boolean) derives Schema {
+  case class Kdj(ts: Long, klines: Seq[Trader.Kline], rsv: Double, k: Double, d: Double, j: Double, end: Boolean) derives Schema {
     def next(ks: Seq[Trader.Kline]) = {
       val headK = ks.last
 
@@ -32,7 +30,7 @@ object Metrics {
       val newK  = k * 2 / 3 + rsv / 3
       val newD  = d * 2 / 3 + newK / 3
       val newJ  = 3 * newK - 2 * newD
-      Kdj(headK.ts, rsv, newK, newD, newJ, headK.end)
+      Kdj(headK.ts, ks, rsv, newK, newD, newJ, headK.end)
     }
   }
   object Kdj {
@@ -44,7 +42,7 @@ object Metrics {
       val newK  = 50 * 2 / 3 + rsv / 3
       val newD  = 50 * 2 / 3 + newK / 3
       val newJ  = 3 * newK - 2 * newD
-      Kdj(k.ts, rsv, newK, newD, newJ, k.end)
+      Kdj(k.ts, klines, rsv, newK, newD, newJ, k.end)
     }
   }
 
