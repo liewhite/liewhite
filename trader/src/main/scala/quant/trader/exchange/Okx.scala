@@ -180,7 +180,7 @@ class Okx(
            "post_only"
          } else {
            throw Exception(s"order type $flag is not supported")
-         }) -> Some(price.toString())
+         }) -> Some(BigDecimal(price).bigDecimal.toPlainString())
       }
       case Trader.OrderType.Market() => "market" -> None
     }
