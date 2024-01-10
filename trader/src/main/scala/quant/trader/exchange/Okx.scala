@@ -368,7 +368,7 @@ class Okx(
       client.newCall(req).execute()
     }.flatMap { res =>
       if (!res.isSuccessful()) {
-        ZIO.fail(Exception(s"failed send request: ${res.code()}"))
+        ZIO.fail(Exception(s"failed send request: ${path} ${res.code()}"))
       } else {
         ZIO.fromEither {
           val body = String(res.body().bytes())
