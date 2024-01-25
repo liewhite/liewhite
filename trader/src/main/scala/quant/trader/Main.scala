@@ -22,7 +22,7 @@ case class Offset(ts: Long, offset: Double)
 // 距离基数来自于两边挂单的差距
 object Main extends ZIOAppDefault {
   def run: ZIO[Any & (ZIOAppArgs & Scope), Any, Any] = {
-    val okx = exchange.Okx("ETH", "USDT", "", "","", None)
-    okx.getPosition().debug
+    val okx = exchange.Okx("TIA", "USDT", "", "","", None)
+    okx.getPosition(Trader.MarginMode.Cross).debug
   }
 }
