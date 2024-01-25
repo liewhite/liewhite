@@ -41,7 +41,7 @@ class BinanceF(
 
   def symbolInfo(): Task[Trader.SymbolInfo] =
     ???
-  def getPosition(): Task[Option[Trader.RestPosition]] = ???
+  def getPosition(mgnMode: Trader.MarginMode): Task[Option[Trader.RestPosition]] = ???
   def klines(interval: String, limit: Int): Task[Seq[Trader.Kline]] = ???
 
   def flushListenKey(): Task[String] =

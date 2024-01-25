@@ -20,7 +20,7 @@ trait Trader {
 
   // 统一使用小写表示
   def getBalance(currency: String): Task[Trader.Balance]
-  def getPosition(): Task[Option[Trader.RestPosition]]
+  def getPosition(mgnMode: Trader.MarginMode): Task[Option[Trader.RestPosition]]
 
   // 统一使用小写表示token, 对应交易所实现自行转换拼接为symbol
   def createOrder(

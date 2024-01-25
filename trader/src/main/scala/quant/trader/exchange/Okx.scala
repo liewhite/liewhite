@@ -88,7 +88,7 @@ class Okx(
     }
   }
 
-  def getPosition(): Task[Option[Trader.RestPosition]] =
+  def getPosition(mgnMode: Trader.MarginMode): Task[Option[Trader.RestPosition]] =
     request[Unit, Seq[Okx.Position]](
       zio.http.Method.GET,
       "api/v5/account/positions",
@@ -99,10 +99,12 @@ class Okx(
       None,
       true
     ).map { okp =>
-      if (okp.isEmpty) {
+
+      val po = okp.filter(_.mgnMode == mgnMode.toString().toLowerCase())
+      if (po.isEmpty) {
         None
       } else {
-        val p = okp.head
+        val p = po.head
         if (p.pos.toDoubleOption.getOrElse(0.0) == 0) {
           None
         } else {
