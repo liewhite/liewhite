@@ -1,6 +1,6 @@
 ThisBuild / organization           := "io.github.liewhite"
 ThisBuild / organizationName       := "liewhite"
-ThisBuild / version                := sys.env.get("RELEASE_VERSION").getOrElse("4.2.1")
+ThisBuild / version                := sys.env.get("RELEASE_VERSION").getOrElse("4.2.2")
 ThisBuild / scalaVersion           := "3.3.1"
 ThisBuild / versionScheme          := Some("early-semver")
 ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
