@@ -1,7 +1,7 @@
 ThisBuild / organization           := "io.github.liewhite"
 ThisBuild / organizationName       := "liewhite"
 ThisBuild / version                := sys.env.get("RELEASE_VERSION").getOrElse("4.2.2")
-ThisBuild / scalaVersion           := "3.3.1"
+ThisBuild / scalaVersion           := "3.5.0"
 ThisBuild / versionScheme          := Some("early-semver")
 ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
 ThisBuild / publishTo              := sonatypePublishToBundle.value
@@ -9,8 +9,8 @@ sonatypeCredentialHost             := "s01.oss.sonatype.org"
 ThisBuild / sonatypeRepository     := "https://s01.oss.sonatype.org/service/local"
 ThisBuild / scalacOptions += "-Yretain-trees"
 
-val zioVersion       = "2.0.19"
-val zioSchemaVersion = "0.4.17"
+val zioVersion       = "2.1.9"
+val zioSchemaVersion = "1.5.0"
 
 val zioSchemaDeps = Seq(
   "dev.zio" %% "zio-schema"            % zioSchemaVersion,
@@ -31,7 +31,7 @@ lazy val common = project
   .in(file("common"))
   .settings(
     name                                   := "common",
-    libraryDependencies += "org.typelevel" %% "shapeless3-deriving" % "3.3.0",
+    libraryDependencies += "org.typelevel" %% "shapeless3-deriving" % "3.4.3",
     libraryDependencies += "commons-codec"  % "commons-codec"       % "1.16.0",
     libraryDependencies += "dev.zio"       %% "zio"                 % zioVersion,
     libraryDependencies ++= zioSchemaDeps,
@@ -68,7 +68,7 @@ lazy val rpc = project
   )
   .dependsOn(common, json)
 
-val zioConfigVersion = "4.0.0-RC14"
+// val zioConfigVersion = "4.0.0-RC14"
 val configDeps = Seq(
   "dev.zio"                         %% "zio"                     % zioVersion,
   "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.15.2"
@@ -91,27 +91,7 @@ lazy val trader = project
   .settings(
     name := "trader",
     libraryDependencies ++= okHttpDeps,
-    libraryDependencies += "dev.zio" %% "zio-http" % "3.0.0-RC4"
-  )
-  .dependsOn(common, json)
-
-lazy val ethers = project
-  .in(file("ethers"))
-  .settings(
-    name := "ethers",
-    libraryDependencies ++= okHttpDeps,
-    libraryDependencies += "commons-codec"  % "commons-codec" % "1.16.0",
-    libraryDependencies += "org.web3j"      % "core"          % "4.10.3",
-    libraryDependencies += "org.scalameta" %% "munit"         % "0.7.29" % Test
-  )
-  .dependsOn(common, json)
-
-lazy val solana = project
-  .in(file("solana"))
-  .settings(
-    name := "solana",
-    libraryDependencies ++= okHttpDeps,
-    libraryDependencies += "com.mmorrell" % "solanaj" % "1.14",
+    libraryDependencies += "dev.zio" %% "zio-http" % "3.0.1"
   )
   .dependsOn(common, json)
 
@@ -120,4 +100,4 @@ lazy val root = project
   .settings(
     publish / skip := true
   )
-  .aggregate(sqlx, rpc, common, config, json, ethers, trader,solana)
+  .aggregate(sqlx, rpc, common, config, json, trader)
