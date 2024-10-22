@@ -1,6 +1,6 @@
 ThisBuild / organization           := "io.github.liewhite"
 ThisBuild / organizationName       := "liewhite"
-ThisBuild / version                := sys.env.get("RELEASE_VERSION").getOrElse("4.2.2")
+ThisBuild / version                := sys.env.get("RELEASE_VERSION").getOrElse("4.3.0")
 ThisBuild / scalaVersion           := "3.5.0"
 ThisBuild / versionScheme          := Some("early-semver")
 ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
@@ -9,7 +9,8 @@ sonatypeCredentialHost             := "s01.oss.sonatype.org"
 ThisBuild / sonatypeRepository     := "https://s01.oss.sonatype.org/service/local"
 ThisBuild / scalacOptions += "-Yretain-trees"
 
-val zioVersion       = "2.1.9"
+val zioVersion       = "2.1.11"
+val zioHttpVersion   = "3.0.1"
 val zioSchemaVersion = "1.5.0"
 
 val zioSchemaDeps = Seq(
@@ -52,27 +53,11 @@ lazy val sqlx = project
   )
   .dependsOn(json, common)
 
-val rpcZioDeps = Seq(
-  "dev.zio" %% "zio"            % zioVersion,
-  "dev.zio" %% "zio-concurrent" % zioVersion,
-  "dev.zio" %% "zio-streams"    % zioVersion
-)
-
-lazy val rpc = project
-  .in(file("rpc"))
-  .settings(
-    name := "rpc",
-    libraryDependencies ++= rpcZioDeps,
-    libraryDependencies ++= zioSchemaDeps,
-    libraryDependencies += "com.rabbitmq" % "amqp-client" % "5.17.0"
-  )
-  .dependsOn(common, json)
-
-// val zioConfigVersion = "4.0.0-RC14"
 val configDeps = Seq(
   "dev.zio"                         %% "zio"                     % zioVersion,
   "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.15.2"
 )
+
 lazy val config = project
   .in(file("config"))
   .settings(
@@ -91,7 +76,7 @@ lazy val trader = project
   .settings(
     name := "trader",
     libraryDependencies ++= okHttpDeps,
-    libraryDependencies += "dev.zio" %% "zio-http" % "3.0.1"
+    libraryDependencies += "dev.zio" %% "zio-http" % zioHttpVersion
   )
   .dependsOn(common, json)
 
@@ -100,4 +85,4 @@ lazy val root = project
   .settings(
     publish / skip := true
   )
-  .aggregate(sqlx, rpc, common, config, json, trader)
+  .aggregate(sqlx, common, config, json, trader)

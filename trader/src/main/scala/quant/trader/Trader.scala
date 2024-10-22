@@ -97,6 +97,7 @@ object Trader {
     case Ioc       // 限价， 无法全部成交就取消剩余部分
     case MakerOnly // 限价， 只做maker
   }
+
   enum OrderState derives Schema {
     case Canceled
     case Submitted

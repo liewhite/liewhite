@@ -12,7 +12,7 @@ enum E derives Schema{
     case E2(b: String)
 }
 
-@noDiscriminator()
+// @noDiscriminator()
 enum Constant derives Schema{
     case C1
     case C2
@@ -30,9 +30,14 @@ case class XX(a:Int = 100,b:Int, c: Int = 200, d: Int, e: Int = 300) derives Sch
 case class WithDefaultValue(orderId: Int,  description: String = "desc") derives Schema
 // case class Op(a: Option[Int]) derives Schema
 
-@main def main = {
-    println("""{"orderId": 2}""".fromJson[WithDefaultValue])
+@noDiscriminator
+enum EE derives Schema{
+    case E1(a:Int)
+    case E2(b:Int=1)
+}
 
+@main def main = {
+//    println("""{"a":1,"b": "xx"}""".fromJson[Json].toOption.get)
 //    println("""{"a":1,"b": "xx"}""".fromJson[A[Boolean]].toOption.get.toJson.asString)
 //    println("""{"b":"asd"}""".fromJson[E])
 //    println("""{"m": {}}""".fromJson[X])
