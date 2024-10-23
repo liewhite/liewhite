@@ -351,11 +351,11 @@ object TField {
     def innerDataType: DataType[java.lang.Double] = SQLDataType.FLOAT
   }
 
-  import liewhite.json.{given,*}
+  import liewhite.json.{given, *}
 
-  given[T:ClassTag: Schema]: TField[T] with {
-    def innerDataType: DataType[T] = {
-      SQLDataType.VARCHAR.asConvertedDataType(new Converter[String, T] {
+  given [T: ClassTag: Schema]: TField[T] with {
+    def innerDataType: DataType[T] =
+      SQLDataType.CLOB.asConvertedDataType(new Converter[String, T] {
 
         override def from(databaseObject: String): T =
           databaseObject.fromJson[T].toOption.get
@@ -368,6 +368,5 @@ object TField {
         override def toType(): Class[T] = summon[ClassTag[T]].runtimeClass.asInstanceOf
 
       })
-    }
   }
 }

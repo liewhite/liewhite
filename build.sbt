@@ -39,20 +39,6 @@ lazy val common = project
     libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
   )
 
-lazy val sqlx = project
-  .in(file("sqlx"))
-  .settings(
-    name                                   := "sqlx",
-    libraryDependencies += "org.jetbrains"  % "annotations"          % "23.0.0",
-    libraryDependencies += "dev.zio"       %% "zio"                  % zioVersion,
-    libraryDependencies += "mysql"          % "mysql-connector-java" % "8.0.33",
-    libraryDependencies += "org.postgresql" % "postgresql"           % "42.6.0",
-    libraryDependencies += "org.jooq"       % "jooq"                 % "3.18.3",
-    libraryDependencies += "org.jooq"       % "jooq-meta"            % "3.18.3",
-    libraryDependencies += "com.zaxxer"     % "HikariCP"             % "5.0.1"
-  )
-  .dependsOn(json, common)
-
 val configDeps = Seq(
   "dev.zio"                         %% "zio"                     % zioVersion,
   "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.15.2"
@@ -85,4 +71,4 @@ lazy val root = project
   .settings(
     publish / skip := true
   )
-  .aggregate(sqlx, common, config, json, trader)
+  .aggregate(common, config, json, trader)
