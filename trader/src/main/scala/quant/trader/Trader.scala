@@ -14,16 +14,22 @@ import zio.*
 import liewhite.json.{*, given}
 
 trait Trader {
-  def symbolInfo(): Task[Trader.SymbolInfo]
+  def symbolsInfo(): Task[Seq[Trader.SymbolInfo]]
 
-  def klines(interval: String, limit: Int): Task[Seq[Trader.Kline]]
+  def klines(symbol: String, interval: String, limit: Int): Task[Seq[Trader.Kline]]
 
   // 统一使用小写表示
   def getBalance(currency: String): Task[Trader.Balance]
-  def getPosition(mgnMode: Trader.MarginMode): Task[Option[Trader.RestPosition]]
+
+  def getSymbolPosition(symbol: String, mgnMode: Trader.MarginMode): Task[Option[Trader.RestPosition]]
+
+  def getPositions(mgnMode: Trader.MarginMode): Task[Seq[Trader.RestPosition]]
+
+  def getDepth(symbol: String, depth:Int): Task[Trader.OrderBook]
 
   // 统一使用小写表示token, 对应交易所实现自行转换拼接为symbol
   def createOrder(
+    symbol: String,
     action: Trader.OrderAction,
     orderType: Trader.OrderType,
     quantity: Double,
@@ -32,33 +38,37 @@ trait Trader {
   ): Task[String] // 返回订单ID
 
   def revokeOrder(
+    symbol: String,
     orderID: Option[String],
     clientOrderID: Option[String]
   ): Task[Unit]
 
   def revokeOrders(orders: Seq[Trader.BatchRevokeOrdersItem]): Task[Unit]
+  def revokeAll(symbol: Option[String]): Task[Unit]
 
-  def getOpenOrders(): Task[Seq[Trader.Order]]
+  def getOpenOrders(symbol: Option[String]): Task[Seq[Trader.Order]]
 
   def getOrder(
+    symbol: String,
     orderID: Option[String],
     clientOrderID: Option[String]
   ): Task[Trader.Order]
 
-  def orderStream(
-  ): ZStream[Any, Throwable, Trader.Order]
+  def orderStream(symbol: String): ZStream[Any, Throwable, Trader.Order]
 
-  def positionStream(): ZStream[Any, Throwable, Trader.Position]
+  def positionStream(symbol: String): ZStream[Any, Throwable, Trader.Position]
 
-  def klineStream(interval: String): ZStream[Any, Throwable, Trader.Kline]
+  def klineStream(symbol: String, interval: String): ZStream[Any, Throwable, Trader.Kline]
 
-  def orderbookStream(depth: Int): ZStream[Any, Throwable, Trader.OrderBook]
+  def orderbookStream(symbol: String, depth: Int): ZStream[Any, Throwable, Trader.OrderBook]
 
   def start(): Task[Unit]
 
 }
 
 object Trader {
+
+
   enum OrderAction derives Schema {
     case Buy
     case Sell
@@ -110,21 +120,26 @@ object Trader {
 
   object OrderState {}
   case class SymbolInfo(
+    symbol: String,
+    settelCcy: String,    // 结算货币
     quantityStep: Double, // 买入数量精度, 币安按币的数量买入， ok按合约张数， 所以ok取1， 币安取stepSize
-    priceStep: Double, // 价格精度
-    ctVal: Double // 面值, 比如ok一张合约代表0.1个ETH， 币安没有张的概念， 直接取1
+    priceStep: Double,    // 价格精度
+    ctVal: Double,         // 面值, 比如ok一张合约代表0.1个ETH， 币安没有张的概念， 直接取1
+    lotSz: Double
   ) derives Schema
 
   case class BatchRevokeOrdersItem(
+    symbol: String,
     ordId: Option[String],
     clOrdId: Option[String]
   )
   case class Order(
+    symbol: String,
     orderId: String,
     orderClientId: String,
     side: OrderAction,
     avgPrice: Double, // 成交均价
-    price: Double, // 委托价格
+    price: Double,    // 委托价格
     size: Double,
     filledQty: Double,
     state: OrderState,
@@ -140,10 +155,11 @@ object Trader {
   }
 
   case class RestPosition(
+    symbol: String,
     marginMode: MarginMode,
     side: PositionSide,
-    size: Double,     
-    avgPrice: Double, 
+    size: Double,
+    avgPrice: Double,
     createTime: Long,
     updateTime: Long
   ) derives Schema
@@ -160,19 +176,19 @@ object Trader {
   case class Balance(currency: String, value: Double) derives Schema
 
   case class Kline(
-      ts: Long,
-      open: Double,
-      low: Double,
-      high: Double,
-      close: Double,
-      volume: Double,
-      end: Boolean
+    ts: Long,
+    open: Double,
+    low: Double,
+    high: Double,
+    close: Double,
+    volume: Double,
+    end: Boolean
   ) derives Schema
 
   case class OrderBook(
-      ts: Long,
-      bids: Seq[Seq[Double]],
-      asks: Seq[Seq[Double]],
+    ts: Long,
+    bids: Seq[Seq[Double]],
+    asks: Seq[Seq[Double]]
   ) derives Schema
 
 }

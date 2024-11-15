@@ -18,8 +18,8 @@ import java.net.URL
 import zio.schema.codec.DecodeError
 
 class Okx(
-  val baseToken: String,
-  val quoteToken: String,
+  // val baseToken: String,
+  // val quoteToken: String,
   val ak: String,
   val skStr: String,
   val secret: String,
@@ -38,38 +38,58 @@ class Okx(
   val wsClient =
     okhttp3.OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).pingInterval(10, TimeUnit.SECONDS).build()
 
-  val factorSymbol = (baseToken + quoteToken).toLowerCase()
+  // val factorSymbol = (baseToken + quoteToken).toLowerCase()
   // todo 根据market改变后缀
-  val exchangeSymbol = s"$baseToken-$quoteToken-SWAP".toUpperCase()
+  // val exchangeSymbol = s"$baseToken-$quoteToken-SWAP".toUpperCase()
 
   def start(): Task[Unit] =
     ZIO.unit
 
-  def symbolInfo(): Task[Trader.SymbolInfo] =
+  def symbolsInfo(): Task[Seq[Trader.SymbolInfo]] =
     request[Unit, Seq[Map[String, String]]](
       zio.http.Method.GET,
       s"api/v5/public/instruments",
-      Map("instId" -> exchangeSymbol, "instType" -> "SWAP"),
+      Map("instType" -> "SWAP"),
       None,
       false
     ).map { data =>
-      val result = data(0)
-      Trader.SymbolInfo(1, result("tickSz").toDouble, result("ctVal").toDouble)
+      data.map(item =>
+        Trader.SymbolInfo(
+          item("instId"),
+          item("settleCcy"),
+          1,
+          item("tickSz").toDouble,
+          item("ctVal").toDouble,
+          item("lotSz").toDouble
+        )
+      )
     }
-  def setLeverage(leverage: Int, tp: Trader.MarginMode): Task[Unit] =
-    request[Okx.SetLeverageReq, Json](
-      zio.http.Method.POST,
-      "api/v5/account/set-leverage",
-      Map.empty,
-      Some(Okx.SetLeverageReq(exchangeSymbol, leverage.toString(), tp.toString().toLowerCase())),
-      true
-    ).unit
 
-  def klines(interval: String, limit: Int = 100): Task[Seq[Trader.Kline]] = {
+  def getDepth(symbol: String, depth: Int): Task[Trader.OrderBook] =
+    request[Unit, Seq[Okx.DepthResponse]](
+      zio.http.Method.GET,
+      "/api/v5/market/books",
+      Map("instId"->symbol,"sz"-> depth.toString()),
+      None,
+      false
+    ).map { data =>
+      val item = data.head
+      Trader.OrderBook(item.ts.toLong, item.bids.map(i => i.map(_.toDouble)), item.asks.map(i => i.map(_.toDouble)))
+    }
+  // def setLeverage(leverage: Int, tp: Trader.MarginMode): Task[Unit] =
+  //   request[Okx.SetLeverageReq, Json](
+  //     zio.http.Method.POST,
+  //     "api/v5/account/set-leverage",
+  //     Map.empty,
+  //     Some(Okx.SetLeverageReq(exchangeSymbol, leverage.toString(), tp.toString().toLowerCase())),
+  //     true
+  //   ).unit
+
+  def klines(symbol: String, interval: String, limit: Int = 100): Task[Seq[Trader.Kline]] = {
     val result = request[Unit, Seq[Seq[String]]](
       zio.http.Method.GET,
       s"api/v5/market/candles",
-      Map("instId" -> exchangeSymbol, "limit" -> limit.toString(), "bar" -> interval),
+      Map("instId" -> symbol, "limit" -> limit.toString(), "bar" -> interval),
       None,
       false
     )
@@ -81,25 +101,53 @@ class Okx(
           items(3).toDouble,
           items(2).toDouble,
           items(4).toDouble,
-          items(5).toDouble,
+          items(7).toDouble, //volCcyQuote, usdt计价
           items(8) == "1"
         )
       }.reverse
     }
   }
+  def getPositions(mgnMode: Trader.MarginMode): Task[Seq[Trader.RestPosition]] =
+    request[Unit, Seq[Okx.Position]](
+      zio.http.Method.GET,
+      "api/v5/account/positions",
+      Map(
+        "instType" -> "SWAP"
+      ),
+      None,
+      true
+    ).map { okp =>
+      val po = okp.filter(_.mgnMode == mgnMode.toString().toLowerCase())
+      po.flatMap { item =>
+        if (item.pos.toDoubleOption.getOrElse(0.0) == 0) {
+          Seq.empty
+        } else {
+          Seq(
+            Trader.RestPosition(
+              item.instId,
+              Trader.MarginMode.parseOkx(item.mgnMode),
+              Trader.PositionSide.parseOkx(item.posSide),
+              item.pos.toDouble,
+              item.avgPx.toDouble,
+              item.cTime.toLong,
+              item.uTime.toLong
+            )
+          )
+        }
+      }
+    }
 
-  def getPosition(mgnMode: Trader.MarginMode): Task[Option[Trader.RestPosition]] =
+  def getSymbolPosition(symbol: String, mgnMode: Trader.MarginMode): Task[Option[Trader.RestPosition]] =
     request[Unit, Seq[Okx.Position]](
       zio.http.Method.GET,
       "api/v5/account/positions",
       Map(
         "instType" -> "SWAP",
-        "instId"   -> exchangeSymbol
+        "instId"   -> symbol
       ),
       None,
       true
     ).map { okp =>
-
       val po = okp.filter(_.mgnMode == mgnMode.toString().toLowerCase())
       if (po.isEmpty) {
         None
@@ -110,6 +158,7 @@ class Okx(
         } else {
           Some(
             Trader.RestPosition(
+              p.instId,
               Trader.MarginMode.parseOkx(p.mgnMode),
               Trader.PositionSide.parseOkx(p.posSide),
               p.pos.toDouble,
@@ -122,10 +171,10 @@ class Okx(
       }
     }
 
-  override def positionStream(): ZStream[Any, Throwable, Trader.Position] =
+  override def positionStream(symbol: String): ZStream[Any, Throwable, Trader.Position] =
     (stream[Chunk[Okx.Position]](
       "positions",
-      exchangeSymbol
+      symbol
     ).flattenChunks.map { item =>
       Trader.Position(
         Trader.MarginMode.parseOkx(item.mgnMode),
@@ -137,13 +186,14 @@ class Okx(
       )
     })
 
-  override def orderStream(): ZStream[Any, Throwable, Trader.Order] =
+  override def orderStream(symbol: String): ZStream[Any, Throwable, Trader.Order] =
     stream[Chunk[Okx.Order]](
       "orders",
-      exchangeSymbol
+      symbol
     ).flattenChunks.mapZIO { item =>
       ZIO.succeed(
         Trader.Order(
+          item.instId,
           item.ordId,
           item.clOrdId,
           Trader.OrderAction.parse(item.side),
@@ -161,15 +211,15 @@ class Okx(
     }
 
   override def createOrder(
+    symbol: String,
     action: Trader.OrderAction,
     orderType: Trader.OrderType,
     quantity: Double,
     clientOrderID: Option[String],
     marginMode: Trader.MarginMode
   ): Task[String] = {
-    val path   = "api/v5/trade/order"
-    val symbol = exchangeSymbol
-    val side   = action.toString().toLowerCase()
+    val path = "api/v5/trade/order"
+    val side = action.toString().toLowerCase()
     val (okOrderType, px) = orderType match {
       case Trader.OrderType.Limit(price, flag) => {
         (if (flag == Trader.LimitOrderFlag.Gtc) {
@@ -206,19 +256,28 @@ class Okx(
     ).map(item => item.head.ordId)
   }
 
-  override def getOpenOrders(): Task[Seq[Trader.Order]] = {
+  override def getOpenOrders(symbol: Option[String]): Task[Seq[Trader.Order]] = {
     val path = "api/v5/trade/orders-pending"
+    val params = symbol match
+      case None =>
+        Map(
+          "instType" -> "SWAP"
+        )
+      case Some(value) =>
+        Map(
+          "instType" -> "SWAP",
+          "instId"   -> value
+        )
+
     val response = request[Unit, Seq[Okx.RestResponse.Order]](
       http.Method.GET,
       path,
-      Map(
-        "instType" -> "SWAP",
-        "instId"   -> exchangeSymbol
-      ),
+      params,
       None
     ).map(os =>
       os.map { i =>
         Trader.Order(
+          i.instId,
           i.ordId,
           i.clOrdId,
           Trader.OrderAction.parse(i.side),
@@ -237,11 +296,17 @@ class Okx(
     response
   }
 
+  override def revokeAll(symbol: Option[String]): Task[Unit] =
+    for {
+      orders <- getOpenOrders(symbol)
+      _      <- revokeOrders(orders.map(o => Trader.BatchRevokeOrdersItem(o.symbol, Some(o.orderId), None)))
+    } yield ()
+
   def revokeOrders(orders: Seq[Trader.BatchRevokeOrdersItem]): Task[Unit] =
     ZIO
       .when(orders.nonEmpty) {
         val req = orders.map { item =>
-          Okx.RevokeOrderRequest(exchangeSymbol, item.ordId, item.clOrdId)
+          Okx.RevokeOrderRequest(item.symbol, item.ordId, item.clOrdId)
         }
         request[Seq[Okx.RevokeOrderRequest], Seq[Okx.RevokeOrderResponse]](
           http.Method.POST,
@@ -253,25 +318,25 @@ class Okx(
       .as(())
 
   override def revokeOrder(
+    symbol: String,
     orderID: Option[String],
     clientOrderID: Option[String]
-  ): Task[Unit] = {
-    val symbol = exchangeSymbol
+  ): Task[Unit] =
     request[Okx.RevokeOrderRequest, Seq[Okx.RevokeOrderResponse]](
       http.Method.POST,
       "api/v5/trade/cancel-order",
       Map.empty,
       Some(Okx.RevokeOrderRequest(symbol, orderID, clientOrderID))
     ) *> ZIO.succeed(())
-  }
 
   override def getOrder(
+    symbol: String,
     orderID: Option[String],
     clientOrderID: Option[String]
   ): Task[Trader.Order] = {
     val path = "api/v5/trade/order"
     val qs = Map(
-      "instId" -> exchangeSymbol
+      "instId" -> symbol
     )
     val qsWithId = if (orderID.isDefined) {
       qs + ("ordId" -> orderID.get)
@@ -289,6 +354,7 @@ class Okx(
     ).map(os =>
       os.map { i =>
         Trader.Order(
+          i.instId,
           i.ordId,
           i.clOrdId,
           Trader.OrderAction.parse(i.side),
@@ -392,9 +458,10 @@ class Okx(
     ).map(res => Trader.Balance(ccy, res.head.details.head.availBal.toDouble))
   }
 
-  override def klineStream(interval: String) = {
+  override def klineStream(symbol: String, interval: String) = {
     val wssUrl = "wss://ws.okx.com:8443/ws/v5/business"
     publicStream[Seq[String], Trader.Kline](
+      symbol,
       wssUrl,
       f"candle$interval",
       k => {
@@ -415,7 +482,7 @@ class Okx(
 
   case class OkOrderBook(ts: Long, asks: Seq[Seq[String]], bids: Seq[Seq[String]]) derives Schema
 
-  override def orderbookStream(depth: Int): ZStream[Any, Throwable, Trader.OrderBook] = {
+  override def orderbookStream(symbol: String, depth: Int): ZStream[Any, Throwable, Trader.OrderBook] = {
     val wssUrl = "wss://ws.okx.com:8443/ws/v5/public"
     val channel = if (depth == 1) {
       "bbo-tbt"
@@ -423,6 +490,7 @@ class Okx(
       throw Exception(s"not supported orderbook depth $depth")
     }
     publicStream[OkOrderBook, Trader.OrderBook](
+      symbol,
       wssUrl,
       channel,
       ok => {
@@ -445,6 +513,7 @@ class Okx(
   }
 
   def publicStream[OK: Schema, OUT: Schema](
+    symbol: String,
     wss: String,
     channel: String,
     transformer: OK => Either[Throwable, OUT]
@@ -462,7 +531,7 @@ class Okx(
                 Okx.WsSubscribeRequest(
                   channel,
                   "",
-                  exchangeSymbol
+                  symbol
                 )
               )
             )
@@ -641,6 +710,7 @@ object Okx {
   case class RestResponse[T](code: String, data: T) derives Schema
   object RestResponse {
     case class Order(
+      instId: String,
       ordId: String,
       px: String,
       clOrdId: String,
@@ -669,11 +739,21 @@ object Okx {
       sMsg: String
     ) derives Schema
   }
+  case class DepthResponse(
+    asks: Seq[Seq[String]],
+    bids: Seq[Seq[String]],
+    ts: String
+  ) derives Schema
 
   case class SetLeverageReq(
     instId: String,
     lever: String,
     mgnMode: String
+  ) derives Schema
+
+  case class GetDepthReq(
+    instId: String,
+    depth: Int
   ) derives Schema
 
   case class CreateOrderRequest(
@@ -731,6 +811,7 @@ object Okx {
   ) derives Schema
 
   case class Position(
+    instId: String,
     posId: String,
     posSide: String,  //
     pos: String,      // 持仓数量
@@ -742,6 +823,7 @@ object Okx {
   ) derives Schema
 
   case class Order(
+    instId: String,
     ordId: String,
     clOrdId: String,
     accFillSz: String, // 累积成交
