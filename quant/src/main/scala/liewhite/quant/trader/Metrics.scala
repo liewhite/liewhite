@@ -1,4 +1,4 @@
-package quant.trader
+package liewhite.quant.trader
 import zio.stream.*
 import liewhite.json.{*, given}
 
@@ -17,7 +17,6 @@ object Metrics {
         val result = klinesWithLast.map(_.close).sum / klinesWithLast.length
         (newKlines.takeRight(n-1), Ma(kline.ts, result, kline.end))
       )
-
   }
 
   case class Kdj(ts: Long, klines: Seq[Trader.Kline], rsv: Double, k: Double, d: Double, j: Double, end: Boolean) derives Schema {

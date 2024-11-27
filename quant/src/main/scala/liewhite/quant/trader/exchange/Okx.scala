@@ -1,4 +1,4 @@
-package quant.trader.exchange
+package liewhite.quant.trader.exchange
 
 import zio.*
 import liewhite.json.{*, given}
@@ -7,49 +7,42 @@ import java.time.ZoneId
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import java.util.Base64
-import zio.http
 import java.time.format.DateTimeFormatter
-import quant.trader.Trader
+import liewhite.quant.trader.Trader
 import zio.stream.*
-import okhttp3.*
 import java.util.concurrent.TimeUnit
 import java.net.InetSocketAddress
 import java.net.URL
 import zio.schema.codec.DecodeError
+import liewhite.quant.trader.Trader.MarginMode
+import liewhite.quant.trader.Trader.AggTrade
+import okhttp3.*
 
 class Okx(
-  // val baseToken: String,
-  // val quoteToken: String,
   val ak: String,
   val skStr: String,
   val secret: String,
-  val proxy: Option[java.net.Proxy]
 ) extends Trader {
 
   val restUrl = "https://www.okx.com"
+  val sk      = skStr.getBytes()
 
-  val sk            = skStr.getBytes()
-  val clientBuilder = okhttp3.OkHttpClient.Builder()
-  val client = (proxy match
-    case None        => clientBuilder
-    case Some(value) => clientBuilder.proxy(value)
-  ).build()
+  val client= okhttp3.OkHttpClient.Builder().build()
 
   val wsClient =
     okhttp3.OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).pingInterval(10, TimeUnit.SECONDS).build()
 
-  // val factorSymbol = (baseToken + quoteToken).toLowerCase()
-  // todo 根据market改变后缀
-  // val exchangeSymbol = s"$baseToken-$quoteToken-SWAP".toUpperCase()
-
   def start(): Task[Unit] =
     ZIO.unit
 
-  def symbolsInfo(): Task[Seq[Trader.SymbolInfo]] =
+  def token2Symbol(token: String): String =
+    s"$token-USDT-SWAP".toUpperCase()
+
+  def symbolInfo(symbol: String): Task[Trader.SymbolInfo] =
     request[Unit, Seq[Map[String, String]]](
-      zio.http.Method.GET,
+      "GET",
       s"api/v5/public/instruments",
-      Map("instType" -> "SWAP"),
+      Map("instType" -> "SWAP", "instId" -> symbol),
       None,
       false
     ).map { data =>
@@ -62,32 +55,24 @@ class Okx(
           item("ctVal").toDouble,
           item("lotSz").toDouble
         )
-      )
+      ).head
     }
 
   def getDepth(symbol: String, depth: Int): Task[Trader.OrderBook] =
     request[Unit, Seq[Okx.DepthResponse]](
-      zio.http.Method.GET,
+      "GET",
       "/api/v5/market/books",
-      Map("instId"->symbol,"sz"-> depth.toString()),
+      Map("instId" -> symbol, "sz" -> depth.toString()),
       None,
       false
     ).map { data =>
       val item = data.head
       Trader.OrderBook(item.ts.toLong, item.bids.map(i => i.map(_.toDouble)), item.asks.map(i => i.map(_.toDouble)))
     }
-  // def setLeverage(leverage: Int, tp: Trader.MarginMode): Task[Unit] =
-  //   request[Okx.SetLeverageReq, Json](
-  //     zio.http.Method.POST,
-  //     "api/v5/account/set-leverage",
-  //     Map.empty,
-  //     Some(Okx.SetLeverageReq(exchangeSymbol, leverage.toString(), tp.toString().toLowerCase())),
-  //     true
-  //   ).unit
 
   def klines(symbol: String, interval: String, limit: Int = 100): Task[Seq[Trader.Kline]] = {
     val result = request[Unit, Seq[Seq[String]]](
-      zio.http.Method.GET,
+      "GET",
       s"api/v5/market/candles",
       Map("instId" -> symbol, "limit" -> limit.toString(), "bar" -> interval),
       None,
@@ -109,7 +94,7 @@ class Okx(
   }
   def getPositions(mgnMode: Trader.MarginMode): Task[Seq[Trader.RestPosition]] =
     request[Unit, Seq[Okx.Position]](
-      zio.http.Method.GET,
+      "GET",
       "api/v5/account/positions",
       Map(
         "instType" -> "SWAP"
@@ -139,7 +124,7 @@ class Okx(
 
   def getSymbolPosition(symbol: String, mgnMode: Trader.MarginMode): Task[Option[Trader.RestPosition]] =
     request[Unit, Seq[Okx.Position]](
-      zio.http.Method.GET,
+      "GET",
       "api/v5/account/positions",
       Map(
         "instType" -> "SWAP",
@@ -177,10 +162,11 @@ class Okx(
       symbol
     ).flattenChunks.map { item =>
       Trader.Position(
+        symbol,
         Trader.MarginMode.parseOkx(item.mgnMode),
         Trader.PositionSide.parseOkx(item.posSide),
-        item.pos.toDoubleOption,
-        item.avgPx.toDoubleOption,
+        item.pos.toDoubleOption.getOrElse(0.0),
+        item.avgPx.toDoubleOption.getOrElse(0.0),
         item.cTime.toLong,
         item.uTime.toLong
       )
@@ -249,7 +235,7 @@ class Okx(
     request[Okx.CreateOrderRequest, Seq[
       Okx.RestResponse.CreateOrderResponse
     ]](
-      http.Method.POST,
+      "POST",
       path,
       Map.empty,
       Some(order)
@@ -270,7 +256,7 @@ class Okx(
         )
 
     val response = request[Unit, Seq[Okx.RestResponse.Order]](
-      http.Method.GET,
+      "GET",
       path,
       params,
       None
@@ -309,7 +295,7 @@ class Okx(
           Okx.RevokeOrderRequest(item.symbol, item.ordId, item.clOrdId)
         }
         request[Seq[Okx.RevokeOrderRequest], Seq[Okx.RevokeOrderResponse]](
-          http.Method.POST,
+          "POST",
           "api/v5/trade/cancel-batch-orders",
           Map.empty,
           Some(req)
@@ -323,7 +309,7 @@ class Okx(
     clientOrderID: Option[String]
   ): Task[Unit] =
     request[Okx.RevokeOrderRequest, Seq[Okx.RevokeOrderResponse]](
-      http.Method.POST,
+      "POST",
       "api/v5/trade/cancel-order",
       Map.empty,
       Some(Okx.RevokeOrderRequest(symbol, orderID, clientOrderID))
@@ -335,9 +321,7 @@ class Okx(
     clientOrderID: Option[String]
   ): Task[Trader.Order] = {
     val path = "api/v5/trade/order"
-    val qs = Map(
-      "instId" -> symbol
-    )
+    val qs   = Map("instId" -> symbol)
     val qsWithId = if (orderID.isDefined) {
       qs + ("ordId" -> orderID.get)
     } else if (clientOrderID.isDefined) {
@@ -347,7 +331,7 @@ class Okx(
     }
 
     val response = request[Unit, Seq[Okx.RestResponse.Order]](
-      http.Method.GET,
+      "GET",
       path,
       qsWithId,
       None
@@ -373,13 +357,13 @@ class Okx(
     response.map(_.head)
   }
 
-  def authHeaders(method: http.Method, path: String, body: String) = {
+  def authHeaders(method: String, path: String, body: String) = {
     val bodyStr = body
 
     val time    = ZonedDateTime.now().withZoneSameInstant(ZoneId.of("UTC"))
     val timeStr = time.format(DateTimeFormatter.ISO_INSTANT).split('.').head + s".${time.getNano() / 1000 / 1000}Z"
 
-    val rawStr        = timeStr + method.name + path + bodyStr
+    val rawStr        = timeStr + method + path + bodyStr
     val mac           = Mac.getInstance("HmacSHA256")
     val secretKeySpec = new SecretKeySpec(sk, "SHA256")
     mac.init(secretKeySpec)
@@ -396,7 +380,7 @@ class Okx(
   }
 
   def request[IN: Schema, OUT: Schema](
-    method: http.Method,
+    method: String,
     path: String,
     qs: Map[String, String],
     body: Option[IN],
@@ -411,6 +395,7 @@ class Okx(
 
     val pathWithQs = uriWithParams.encodedPath() + (if (qs.isEmpty) { "" }
                                                     else { "?" + uriWithParams.encodedQuery() })
+
     val headers = if (auth) {
       authHeaders(
         method,
@@ -428,19 +413,19 @@ class Okx(
       case None => reqWithHeaders.get()
       case Some(value) =>
         reqWithHeaders.method(
-          method.name,
+          method,
           okhttp3.RequestBody.create(bodyStr, MediaType.parse("application/json; charset=utf-8"))
         )
     val req = requestWithBody.build()
     (ZIO.attemptBlocking {
       client.newCall(req).execute()
     }.flatMap { res =>
+
+      val body = String(res.body().bytes())
       if (!res.isSuccessful()) {
         ZIO.fail(Exception(s"failed send request: ${path} ${res.code()}"))
       } else {
         ZIO.fromEither {
-          val body = String(res.body().bytes())
-          // println("response" -> body)
           body.fromJson[Okx.RestResponse[OUT]].map(_.data).left.map(e => e.and(DecodeError.EmptyContent(body)))
         }
       }
@@ -451,7 +436,7 @@ class Okx(
   def getBalance(ccy: String) = {
     val path = s"api/v5/account/balance"
     request[Unit, Seq[Okx.RestResponse.Balance]](
-      http.Method.GET,
+      "GET",
       path,
       Map("ccy" -> ccy.toUpperCase()),
       None
@@ -463,7 +448,7 @@ class Okx(
     publicStream[Seq[String], Trader.Kline](
       symbol,
       wssUrl,
-      f"candle$interval",
+      s"candle$interval",
       k => {
         Right(
           Trader.Kline(
@@ -480,15 +465,11 @@ class Okx(
     )
   }
 
-  case class OkOrderBook(ts: Long, asks: Seq[Seq[String]], bids: Seq[Seq[String]]) derives Schema
+  case class OkOrderBook(ts: String, asks: Seq[Seq[String]], bids: Seq[Seq[String]]) derives Schema
 
-  override def orderbookStream(symbol: String, depth: Int): ZStream[Any, Throwable, Trader.OrderBook] = {
-    val wssUrl = "wss://ws.okx.com:8443/ws/v5/public"
-    val channel = if (depth == 1) {
-      "bbo-tbt"
-    } else {
-      throw Exception(s"not supported orderbook depth $depth")
-    }
+  override def orderbookStream(symbol: String): ZStream[Any, Throwable, Trader.OrderBook] = {
+    val wssUrl  = "wss://ws.okx.com:8443/ws/v5/public"
+    val channel = "bbo-tbt"
     publicStream[OkOrderBook, Trader.OrderBook](
       symbol,
       wssUrl,
@@ -502,14 +483,35 @@ class Okx(
         }
         Right(
           Trader.OrderBook(
-            ok.ts,
+            ok.ts.toLong,
             bids,
             asks
           )
         )
       }
     )
+  }
 
+  case class OkTrades(ts: String, px: String, sz: String, side: String) derives Schema
+
+  def aggTradeStream(symbol: String): ZStream[Any, Throwable, AggTrade] = {
+    val wssUrl = "wss://ws.okx.com:8443/ws/v5/public"
+    publicStream[OkTrades, Trader.AggTrade](
+      symbol,
+      wssUrl,
+      "trades",
+      item => {
+        Right(
+          Trader.AggTrade(
+            symbol,
+            item.ts.toLong,
+            item.px.toDouble,
+            item.sz.toDouble,
+            Trader.OrderAction.parse(item.side)
+          )
+        )
+      }
+    )
   }
 
   def publicStream[OK: Schema, OUT: Schema](
@@ -620,6 +622,7 @@ class Okx(
                 )
               )
             )
+            println(s"send login to $channel")
             x.send(req.toJson.asString)
           }
 
@@ -635,6 +638,7 @@ class Okx(
                     if (value.code != "0") {
                       cb(ZIO.fail(Some(Exception(s"Login failed $x"))))
                     } else {
+                      println(s"login to $channel success, send subscribe")
                       // 订阅
                       s.send(
                         Okx

@@ -57,12 +57,12 @@ val okHttpDeps = Seq(
   "com.softwaremill.sttp.client3" %% "okhttp-backend" % "3.6.2"
 )
 
-lazy val trader = project
-  .in(file("trader"))
+lazy val quant = project
+  .in(file("quant"))
   .settings(
-    name := "trader",
+    name := "quant",
     libraryDependencies ++= okHttpDeps,
-    libraryDependencies += "dev.zio" %% "zio-http" % zioHttpVersion
+    // libraryDependencies += "dev.zio" %% "zio-http" % zioHttpVersion
   )
   .dependsOn(common, json)
 
@@ -71,4 +71,4 @@ lazy val root = project
   .settings(
     publish / skip := true
   )
-  .aggregate(common, config, json, trader)
+  .aggregate(common, config, json, quant)

@@ -1,9 +1,8 @@
-// package quant.trader.exchange
+// package liewhite.quant.trader.exchange
 
-// import quant.trader.Trader
+// import liewhite.quant.trader.Trader
 // import zio.*
 // import zio.stream.ZStream
-// import zio.http
 // import okhttp3.*
 // import liewhite.json.{*, given}
 // import java.time.ZonedDateTime
@@ -11,10 +10,16 @@
 // import org.apache.commons.codec.binary.Hex
 // import zio.schema.codec.DecodeError
 // import java.net.InetSocketAddress
-// import quant.trader.Trader.OrderType
-// import quant.trader.Trader.LimitOrderFlag
 // import java.util.concurrent.TimeUnit
 // import scala.util.Try
+// import liewhite.quant.trader.Trader.OrderType
+// import liewhite.quant.trader.Trader.LimitOrderFlag
+// import liewhite.quant.trader.Trader.Position
+// import liewhite.quant.trader.Trader.Kline
+// import liewhite.quant.trader.Trader.SymbolInfo
+// import liewhite.quant.trader.Trader.RestPosition
+// import liewhite.quant.trader.Trader.MarginMode
+// import liewhite.quant.trader.Trader.OrderBook
 
 // class BinanceF(
 //   val apiKey: String,
@@ -24,6 +29,22 @@
 //   val precision: Int, // 精确到 e^precision, 比如-2代表0.01
 //   val proxy: Option[java.net.Proxy] = None
 // ) extends Trader {
+
+//   def token2Symbol(token: String): String = {
+//     f"${token}USDT".toUpperCase()
+//   }
+
+//   override def getPositions(mgnMode: MarginMode): Task[Seq[RestPosition]] = ???
+
+//   override def klines(symbol: String, interval: String, limit: Int): Task[Seq[Kline]] = ???
+
+//   override def getSymbolPosition(symbol: String, mgnMode: MarginMode): Task[Option[RestPosition]] = ???
+
+//   override def getDepth(symbol: String, depth: Int): Task[OrderBook] = ???
+
+//   override def revokeAll(symbol: Option[String]): Task[Unit] = ???
+
+//   override def symbolsInfo(): Task[Seq[SymbolInfo]] = ???
 
 //   val restUrl       = "https://fapi.binance.com"
 //   val clientBuilder = okhttp3.OkHttpClient.Builder()
@@ -36,13 +57,12 @@
 //     okhttp3.OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).pingInterval(10, TimeUnit.SECONDS).build()
 
 //   val factorSymbol = (baseToken + quoteToken).toLowerCase()
-//   // todo 根据market改变后缀
-//   val exchangeSymbol = s"$baseToken$quoteToken".toUpperCase()
 
 //   def symbolInfo(): Task[Trader.SymbolInfo] =
 //     ???
+
 //   def getPosition(mgnMode: Trader.MarginMode): Task[Option[Trader.RestPosition]] = ???
-//   def klines(interval: String, limit: Int): Task[Seq[Trader.Kline]] = ???
+//   def klines(interval: String, limit: Int): Task[Seq[Trader.Kline]]              = ???
 
 //   def flushListenKey(): Task[String] =
 //     request[BinanceF.ListenKeyResponse](
@@ -90,7 +110,7 @@
 //         }
 //       }
 
-//   override def positionStream(): ZStream[Any, Throwable, Trader.Position] =
+//   override def positionStream(symbol: String): ZStream[Any, Throwable, Trader.Position] =
 //     wsStream()
 //       .map(item => item.fromJson[BinanceF.AccountUpdatePush])
 //       .filter(_.isRight)
@@ -98,10 +118,11 @@
 //       .map { items =>
 //         Chunk.fromIterable(items.a.P.map { item =>
 //           Trader.Position(
+//             symbol,
 //             Trader.MarginMode.Isolated, // 应该不会用到
 //             Trader.PositionSide.Net,    // 不支持双边开仓模式
-//             Some(item.pa.toDouble),
-//             Some(item.ep.toDouble),
+//             item.pa.toDouble,
+//             item.ep.toDouble,
 //             items.T, // 币安position推送没有创建时间
 //             items.T
 //           )
@@ -110,7 +131,7 @@
 //       .flattenChunks
 //       .retry(Schedule.fixed(3.second))
 
-//   override def orderStream(): ZStream[Any, Throwable, Trader.Order] =
+//   override def orderStream(symbol: String): ZStream[Any, Throwable, Trader.Order] =
 //     wsStream()
 //       .map(item => item.fromJson[BinanceF.OrderPushItem])
 //       .filter(_.isRight)
@@ -136,14 +157,14 @@
 //       }
 //       .retry(Schedule.fixed(3.second))
 
-//   override def klineStream(interval: String) =
+//   override def klineStream(symbol: String, interval: String) =
 //     ???
 
-//   override def orderbookStream(depth: Int): ZStream[Any, Throwable, Trader.OrderBook] = ???
+//   override def orderbookStream(symbol: String): ZStream[Any, Throwable, Trader.OrderBook] = ???
 
-//   override def getOrder(orderID: Option[String], clientOrderID: Option[String]): Task[Trader.Order] = {
+//   override def getOrder(symbol: String, orderID: Option[String], clientOrderID: Option[String]): Task[Trader.Order] = {
 //     val path   = "fapi/v1/order"
-//     val params = Seq(("symbol", exchangeSymbol))
+//     val params = Seq(("symbol", symbol))
 //     val paramsWithOid = orderID match
 //       case None        => params
 //       case Some(value) => params.appended(("orderId", value))
@@ -157,6 +178,7 @@
 //   }
 
 //   override def createOrder(
+//     symbol: String,
 //     action: Trader.OrderAction,
 //     orderType: Trader.OrderType,
 //     quantity: Double,
@@ -169,7 +191,7 @@
 //       case OrderType.Market()           => "GTC"
 
 //     val params = Seq(
-//       ("symbol", exchangeSymbol),
+//       ("symbol", symbol),
 //       ("side", action.toString().toUpperCase()),
 //       ("type", orderType.toString().toUpperCase()),
 //       ("quantity", withPrecision(quantity, -3).toString()),
@@ -193,7 +215,7 @@
 //     request[Seq[Json]](
 //       http.Method.DELETE,
 //       path,
-//       Seq(("symbol", exchangeSymbol), ("orderIdList", oids.toJson.asString))
+//       Seq(("orderIdList", oids.toJson.asString))
 //     ).as(())
 //   }
 
@@ -211,12 +233,14 @@
 //     )
 //   }
 
-//   override def revokeOrder(orderID: Option[String], clientOrderID: Option[String]): Task[Unit] = {
+//   override def revokeOrder(symbol: String, orderID: Option[String], clientOrderID: Option[String]): Task[Unit] = {
 //     val path = "fapi/v1/order"
+//     val params = Seq(("symbol", symbol))
+
 //     request[Seq[Json]](
 //       http.Method.DELETE,
 //       path,
-//       Seq(("symbol", exchangeSymbol), ("orderId", orderID.get))
+//       params,
 //     ).as(())
 //   }
 
@@ -228,14 +252,19 @@
 //         .retry(Schedule.fixed(3.second))
 //         .fork
 //         .as(()))
+//   override def aggTradeStream(symbol: String): ZStream[Any, Throwable, Trader.AggTrade] = ???
 
-//   override def getOpenOrders(): Task[Seq[Trader.Order]] = {
+//   override def getOpenOrders(symbol: Option[String]): Task[Seq[Trader.Order]] = {
 //     val path = "fapi/v1/openOrders"
-//     request[Seq[BinanceF.Order]](http.Method.GET, path, Seq(("symbol", exchangeSymbol))).map { orders =>
+//     val params = symbol match {
+//         case None => Seq.empty
+//         case Some(value) => Seq(("symbol", value))
+//     }
+//     request[Seq[BinanceF.Order]](http.Method.GET, path, params).map { orders =>
 //       orders.map(o => parseOrder(o))
 //     }
 //   }
-//   def parseOrder(o: BinanceF.Order): Trader.Order = {
+//   def parseOrder(o: BinanceF.Order) = {
 //     val status = o.status match {
 //       case "NEW"              => Trader.OrderState.Submitted
 //       case "CANCELED"         => Trader.OrderState.Canceled
@@ -257,6 +286,7 @@
 //       throw Exception(s"unknown order type ${o.`type`}")
 //     }
 //     Trader.Order(
+//       o.symbol,
 //       o.orderId.toString(),
 //       o.clientOrderId,
 //       Trader.OrderAction.parse(o.side),
@@ -387,39 +417,4 @@
 //       case LimitOrderFlag.Ioc       => "IOC"
 //       case LimitOrderFlag.MakerOnly => "GTX"
 
-// }
-
-// object TestBinance extends ZIOAppDefault {
-//   def run: ZIO[Any & (ZIOAppArgs & Scope), Any, Any] =
-//     val bots = Seq(
-//       "btc",
-//       "eth",
-//       "bnb",
-//       "bch",
-//       "xrp",
-//       "eos",
-//       "ltc",
-//       "trx",
-//       "etc",
-//       "link",
-//       "xlm",
-//       "ada",
-//       "atom",
-//       "zilu",
-//       "algo",
-//       "doge"
-//     ).map { t =>
-//       val cli = BinanceF(
-//         "4ypogKlTCzAtPVlUrQ7X8Qs04EiEEPBCUu4NmtaLMFb5laInLRpFjLDL35XrNtkH",
-//         "kNrf3vXtEsMnHoz6DyLcLxdK0OxHpkIhFBRLz3oEFzKAevMIRhCsNi1ejehpvV1C",
-//         t,
-//         "usdt",
-//         -3,
-//         // None
-//         Some(new java.net.Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 6152)))
-//       )
-//       cli.start()
-//         *> cli.positionStream().debug("position: ").runDrain <&> cli.orderStream().debug("order: ").runDrain
-//     }
-//     ZIO.collectAllPar(bots) *> ZIO.never
 // }

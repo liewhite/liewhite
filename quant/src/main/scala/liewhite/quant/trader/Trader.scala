@@ -1,4 +1,4 @@
-package quant.trader
+package liewhite.quant.trader
 
 import zio.ZIOAppDefault
 import zio.Scope
@@ -7,17 +7,18 @@ import zio.ZIOAppArgs
 import zio.stream.ZStream
 import zio.stream.ZSink
 import zio.Chunk
-import quant.trader.common.Utils
 import zio.ZLayer
 import java.time.ZonedDateTime
 import zio.*
 import liewhite.json.{*, given}
+import liewhite.quant.trader.Trader.AggTrade
 
 trait Trader {
-  def symbolsInfo(): Task[Seq[Trader.SymbolInfo]]
+  def token2Symbol(token: String): String
+  // def symbolsInfo(): Task[Seq[Trader.SymbolInfo]]
+  def symbolInfo(symbol: String): Task[Trader.SymbolInfo]
 
   def klines(symbol: String, interval: String, limit: Int): Task[Seq[Trader.Kline]]
-
   // 统一使用小写表示
   def getBalance(currency: String): Task[Trader.Balance]
 
@@ -60,15 +61,14 @@ trait Trader {
 
   def klineStream(symbol: String, interval: String): ZStream[Any, Throwable, Trader.Kline]
 
-  def orderbookStream(symbol: String, depth: Int): ZStream[Any, Throwable, Trader.OrderBook]
+  def orderbookStream(symbol: String): ZStream[Any, Throwable, Trader.OrderBook]
+  def aggTradeStream(symbol: String): ZStream[Any, Throwable, Trader.AggTrade]
 
   def start(): Task[Unit]
 
 }
 
 object Trader {
-
-
   enum OrderAction derives Schema {
     case Buy
     case Sell
@@ -133,6 +133,14 @@ object Trader {
     ordId: Option[String],
     clOrdId: Option[String]
   )
+  case class AggTrade(
+    symbol: String,
+    ts: Long,
+    px: Double,
+    sz: Double,
+    side: OrderAction
+  ) derives Schema
+
   case class Order(
     symbol: String,
     orderId: String,
@@ -165,10 +173,11 @@ object Trader {
   ) derives Schema
 
   case class Position(
+    symbol: String,
     marginMode: MarginMode,
     side: PositionSide,
-    size: Option[Double],     // 平仓事件此处为空
-    avgPrice: Option[Double], // 平仓事件此处为空
+    size: Double,     // 平仓事件此处为空
+    avgPrice: Double, // 平仓事件此处为空
     createTime: Long,
     updateTime: Long
   ) derives Schema
