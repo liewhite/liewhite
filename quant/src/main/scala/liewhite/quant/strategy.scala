@@ -80,6 +80,10 @@ class Strategy() extends SingleTokenStrategy {
       case Event.OrderBook(order) => {
         Chunk.empty
       }
+      // 计算上下波动距离均线的最大距离
+      // 计算当前均线
+      // 在当前均线基础上， 根据最大波动距离 * 0.618， 计算上下挂单价格
+      // 不用考虑现价， 以均线为准
       case Event.AggTrade(trade) => {
         queue.enqueue(trade)
         val expireTs = trade.ts - 10000 // 10秒

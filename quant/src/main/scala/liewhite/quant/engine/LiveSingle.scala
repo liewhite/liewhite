@@ -19,6 +19,16 @@ class LiveSingleEngine(okx: Trader, strategy: SingleTokenStrategy) {
   val symbol = okx.token2Symbol(token)
   val state  = State(symbol, mutable.HashMap.empty, 0.0, 0.0)
 
+  // 定时同步挂单和position
+  def syncAccount(state: State): Task[Unit] =
+    for {
+      orders   <- okx.getOpenOrders(Some(symbol))
+      position <- okx.getSymbolPosition(symbol, Trader.MarginMode.Cross)
+    } yield {
+      orders.foreach(o => state.orders.addOne(o.orderId, o))
+      state.position = position.map(_.size).getOrElse(0.0)
+    }
+
   def run(): Task[Unit] = {
     val orderStream     = okx.orderStream(symbol).map(Event.Order(_))
     val aggTradeStream  = okx.aggTradeStream(symbol).map(Event.AggTrade(_))
@@ -28,19 +38,16 @@ class LiveSingleEngine(okx: Trader, strategy: SingleTokenStrategy) {
 
     for {
       symbolInfo <- okx.symbolInfo(symbol)
-      orders     <- okx.getOpenOrders(Some(symbol))
-      position   <- okx.getSymbolPosition(symbol, Trader.MarginMode.Cross)
+      _          <- syncAccount(state)
       _ <- {
-        orders.foreach(o => state.orders.addOne(o.orderId, o))
-        state.position = position.map(_.size).getOrElse(0.0)
         orderStream
           .mergeHaltEither(aggTradeStream)
           .mergeHaltEither(orderbookStream)
           .mergeHaltEither(positionStream)
           .mergeHaltEither(tickerStream)
           .mapZIO { event =>
-            // 更新状态, 比如订单本，持仓，挂单
-            event match {
+            (event match {
+              // 更新状态, 比如订单本，持仓，挂单
               case Event.Order(order) => {
                 state.orders.update(order.orderId, order)
                 state.orders.filterInPlace { (_, order) =>
@@ -51,13 +58,27 @@ class LiveSingleEngine(okx: Trader, strategy: SingleTokenStrategy) {
                     Trader.OrderState.Rejected
                   ).contains(order.state)
                 }
+                ZIO.unit
               }
-              case Event.Position(position)   => state.position = position.size
-              case Event.OrderBook(orderbook) => state.midPrice = (orderbook.bids.head(0) + orderbook.asks.head(0)) / 2
-              case Event.AggTrade(trade)      => {}
-              case _                          => {}
-            }
-            ZIO.attempt(strategy.onEvent(event, state))
+              case Event.Position(position) => {
+                state.position = position.size
+                ZIO.unit
+              }
+              case Event.OrderBook(orderbook) => {
+                state.midPrice = (orderbook.bids.head(0) + orderbook.asks.head(0)) / 2
+                ZIO.unit
+              }
+              case Event.AggTrade(trade) => {
+                ZIO.unit
+              }
+              case Event.Clock(c) => {
+                // 每10秒强制同步一次挂单和持仓
+                ZIO.when(c.toEpochSecond() % 10 == 0) {
+                  syncAccount(state)
+                }
+              }
+            }) *>
+              ZIO.attempt(strategy.onEvent(event, state))
           }
           .mapZIO { actions =>
             // 执行action, 只有挂单撤单两个操作
@@ -82,8 +103,7 @@ class LiveSingleEngine(okx: Trader, strategy: SingleTokenStrategy) {
                     .fork
                 }
                 case c @ Action.CancelOrder(orderId) => {
-                  ZIO.logInfo(f"cancel order $c") *>
-                    okx.revokeOrder(symbol, Some(orderId), None).fork
+                  okx.revokeOrder(symbol, Some(orderId), None).fork
                 }
               }
             }
