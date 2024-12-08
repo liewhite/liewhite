@@ -21,13 +21,13 @@ import okhttp3.*
 class Okx(
   val ak: String,
   val skStr: String,
-  val secret: String,
+  val secret: String
 ) extends Trader {
 
   val restUrl = "https://www.okx.com"
   val sk      = skStr.getBytes()
 
-  val client= okhttp3.OkHttpClient.Builder().build()
+  val client = okhttp3.OkHttpClient.Builder().build()
 
   val wsClient =
     okhttp3.OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).pingInterval(10, TimeUnit.SECONDS).build()
@@ -46,16 +46,18 @@ class Okx(
       None,
       false
     ).map { data =>
-      data.map(item =>
-        Trader.SymbolInfo(
-          item("instId"),
-          item("settleCcy"),
-          1,
-          item("tickSz").toDouble,
-          item("ctVal").toDouble,
-          item("lotSz").toDouble
+      data
+        .map(item =>
+          Trader.SymbolInfo(
+            item("instId"),
+            item("settleCcy"),
+            1,
+            item("tickSz").toDouble,
+            item("ctVal").toDouble,
+            item("lotSz").toDouble
+          )
         )
-      ).head
+        .head
     }
 
   def getDepth(symbol: String, depth: Int): Task[Trader.OrderBook] =
@@ -67,7 +69,13 @@ class Okx(
       false
     ).map { data =>
       val item = data.head
-      Trader.OrderBook(item.ts.toLong, item.bids.map(i => i.map(_.toDouble)), item.asks.map(i => i.map(_.toDouble)))
+      Trader.OrderBook(
+        item.ts.toLong,
+        0,
+        0,
+        item.bids.map(i => i.map(_.toDouble)),
+        item.asks.map(i => i.map(_.toDouble))
+      )
     }
 
   def klines(symbol: String, interval: String, limit: Int = 100): Task[Seq[Trader.Kline]] = {
@@ -465,11 +473,12 @@ class Okx(
     )
   }
 
-  case class OkOrderBook(ts: String, asks: Seq[Seq[String]], bids: Seq[Seq[String]]) derives Schema
+  case class OkOrderBook(ts: String, prevSeqId: Long, seqId: Long, asks: Seq[Seq[String]], bids: Seq[Seq[String]])
+      derives Schema
 
-  override def orderbookStream(symbol: String): ZStream[Any, Throwable, Trader.OrderBook] = {
+  override def orderbookStream(symbol: String): ZStream[Any, Throwable, Trader.Depth] = {
     val wssUrl  = "wss://ws.okx.com:8443/ws/v5/public"
-    val channel = "bbo-tbt"
+    val channel = "books"
     publicStream[OkOrderBook, Trader.OrderBook](
       symbol,
       wssUrl,
@@ -484,12 +493,34 @@ class Okx(
         Right(
           Trader.OrderBook(
             ok.ts.toLong,
+            ok.prevSeqId,
+            ok.seqId,
             bids,
             asks
           )
         )
       }
-    )
+    ).mapAccumZIO((-1L, Trader.Depth())) { (state, update) =>
+      val seqId    = state._1
+      val preSeqId = update.preId
+      val newSeqId = update.id
+      val snap     = state._2
+
+
+      // 快照
+      if (preSeqId == -1) {
+        snap.applyUpdate(Trader.DepthUpdate(update.ts, update.bids, update.asks), true)
+        ZIO.succeed(((newSeqId, snap), snap))
+      } else if (preSeqId == newSeqId) {
+        // 无更新
+        ZIO.succeed(((newSeqId, snap), state._2))
+      } else if (preSeqId == seqId) {
+        snap.applyUpdate(Trader.DepthUpdate(update.ts, update.bids, update.asks), false)
+        ZIO.succeed(((newSeqId, snap), snap))
+      } else {
+        ZIO.fail(Exception(s"okx depth seq id not match local: $seqId  need local to be:${preSeqId}"))
+      }
+    }
   }
 
   case class OkTrades(ts: String, px: String, sz: String, side: String) derives Schema

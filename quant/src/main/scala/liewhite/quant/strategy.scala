@@ -35,7 +35,7 @@ def findMaxIncrease(nums: Seq[Double], sign: Double): Double = {
 class Strategy() extends SingleTokenStrategy {
   val orderSize   = 1             // 0.1张合约
   val maxPosition = orderSize * 3 // 3张合约
-  val queue = mutable.Queue[Trader.AggTrade]()
+  val queue       = mutable.Queue[Trader.AggTrade]()
 
   def token: String = "PUFFER"
 
@@ -112,11 +112,13 @@ class Strategy() extends SingleTokenStrategy {
 
 object Main extends ZIOAppDefault {
   def run =
-    val okx      = Okx("", "", "")
-    val strategy = new Strategy()
-    val engine   = LiveSingleEngine(okx, strategy)
-    engine
-      .run()
-      .debug("end22 of ap11111p: ")
-      .retry(Schedule.fixed(3.second))
+    val okx = Okx("", "", "")
+    okx.orderbookStream("BTC-USDT-SWAP").map(item => (item.asks.firstKey() + item.bids.lastKey()) / 2).debug.runDrain
+
+  // val strategy = new Strategy()
+  // val engine   = LiveSingleEngine(okx, strategy)
+  // engine
+  //   .run()
+  //   .debug("end22 of ap11111p: ")
+  //   .retry(Schedule.fixed(3.second))
 }

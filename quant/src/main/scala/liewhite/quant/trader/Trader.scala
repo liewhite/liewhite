@@ -12,6 +12,7 @@ import java.time.ZonedDateTime
 import zio.*
 import liewhite.json.{*, given}
 import liewhite.quant.trader.Trader.AggTrade
+import java.util.TreeMap
 
 trait Trader {
   def token2Symbol(token: String): String
@@ -26,7 +27,7 @@ trait Trader {
 
   def getPositions(mgnMode: Trader.MarginMode): Task[Seq[Trader.RestPosition]]
 
-  def getDepth(symbol: String, depth:Int): Task[Trader.OrderBook]
+  def getDepth(symbol: String, depth: Int): Task[Trader.OrderBook]
 
   // 统一使用小写表示token, 对应交易所实现自行转换拼接为symbol
   def createOrder(
@@ -61,7 +62,8 @@ trait Trader {
 
   def klineStream(symbol: String, interval: String): ZStream[Any, Throwable, Trader.Kline]
 
-  def orderbookStream(symbol: String): ZStream[Any, Throwable, Trader.OrderBook]
+  // 维护好的本地订单本
+  def orderbookStream(symbol: String): ZStream[Any, Throwable, Trader.Depth]
   def aggTradeStream(symbol: String): ZStream[Any, Throwable, Trader.AggTrade]
 
   def start(): Task[Unit]
@@ -124,7 +126,7 @@ object Trader {
     settelCcy: String,    // 结算货币
     quantityStep: Double, // 买入数量精度, 币安按币的数量买入， ok按合约张数， 所以ok取1， 币安取stepSize
     priceStep: Double,    // 价格精度
-    ctVal: Double,         // 面值, 比如ok一张合约代表0.1个ETH， 币安没有张的概念， 直接取1
+    ctVal: Double,        // 面值, 比如ok一张合约代表0.1个ETH， 币安没有张的概念， 直接取1
     lotSz: Double
   ) derives Schema
 
@@ -196,8 +198,44 @@ object Trader {
 
   case class OrderBook(
     ts: Long,
+    preId: Long,
+    id: Long,
     bids: Seq[Seq[Double]],
     asks: Seq[Seq[Double]]
   ) derives Schema
 
+  case class Depth() {
+    val bids  = new TreeMap[Double, Double]
+    val asks  = new TreeMap[Double, Double]
+    var ts    = 0L
+
+    def reset() = {
+      bids.clear()
+      asks.clear()
+      ts = 0
+    }
+
+    def overrideBook(src: Seq[Seq[Double]], dst: TreeMap[Double, Double]) =
+      src.foreach { kv =>
+        if (kv(1) == 0) {
+          dst.remove(kv(0))
+        } else {
+          dst.put(kv(0), kv(1))
+        }
+      }
+
+    def applyUpdate(d: DepthUpdate, isSnapshot: Boolean) =
+      if (isSnapshot) {
+        reset()
+      }
+      overrideBook(d.asks, asks)
+      overrideBook(d.bids, bids)
+      ts = d.ts
+  }
+
+  case class DepthUpdate(
+    ts: Long,
+    bids: Seq[Seq[Double]],
+    asks: Seq[Seq[Double]]
+  )
 }

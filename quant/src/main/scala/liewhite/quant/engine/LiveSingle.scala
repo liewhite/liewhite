@@ -17,7 +17,7 @@ trait SingleTokenStrategy {
 class LiveSingleEngine(okx: Trader, strategy: SingleTokenStrategy) {
   val token  = strategy.token
   val symbol = okx.token2Symbol(token)
-  val state  = State(symbol, mutable.HashMap.empty, 0.0, 0.0)
+  val state  = State(symbol, mutable.HashMap.empty, 0.0, Trader.Depth(), 0.0)
 
   // 定时同步挂单和position
   def syncAccount(state: State): Task[Unit] =
@@ -32,9 +32,9 @@ class LiveSingleEngine(okx: Trader, strategy: SingleTokenStrategy) {
   def run(): Task[Unit] = {
     val orderStream     = okx.orderStream(symbol).map(Event.Order(_))
     val aggTradeStream  = okx.aggTradeStream(symbol).map(Event.AggTrade(_))
-    val orderbookStream = okx.orderbookStream(symbol).map(Event.OrderBook(_))
     val positionStream  = okx.positionStream(symbol).map(Event.Position(_))
     val tickerStream    = ZStream.tick(1.second).map(_ => Event.Clock(ZonedDateTime.now()))
+    val orderbookStream = okx.orderbookStream(symbol).map(Event.OrderBook(_))
 
     for {
       symbolInfo <- okx.symbolInfo(symbol)
@@ -65,7 +65,8 @@ class LiveSingleEngine(okx: Trader, strategy: SingleTokenStrategy) {
                 ZIO.unit
               }
               case Event.OrderBook(orderbook) => {
-                state.midPrice = (orderbook.bids.head(0) + orderbook.asks.head(0)) / 2
+                state.midPrice = (orderbook.bids.lastKey + orderbook.asks.firstKey) / 2
+                state.depth = orderbook
                 ZIO.unit
               }
               case Event.AggTrade(trade) => {
