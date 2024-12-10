@@ -114,7 +114,9 @@ class Strategy() extends SingleTokenStrategy {
 object Main extends ZIOAppDefault {
   def run =
     val okx = Okx("", "", "")
-    okx.orderbookStream("BTC-USDT-SWAP").map(item => (item.asks.firstKey() + item.bids.lastKey()) / 2).debug.runDrain
+    okx.orderbookStream("BTC-USDT-SWAP").map(item =>{
+      (item.asks.head(0)  + item.bids.last(0)) / 2
+    }).debug.runDrain
 
   // val strategy = new Strategy()
   // val engine   = LiveSingleEngine(okx, strategy)

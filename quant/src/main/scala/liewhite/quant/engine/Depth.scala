@@ -1,26 +1,28 @@
 package liewhite.quant.engine
-// import scala.collection.mutable
-import java.util.TreeMap
+// import scala.collection.mutable.TreeMap
+import scala.collection.SortedMap
+import scala.collection.immutable.TreeMap
+// import java.util.TreeMap
 
 class Depth {
-  val bids  = new TreeMap[Double, Double]
-  val asks  = new TreeMap[Double, Double]
+  var bids  = TreeMap.empty[Double, Double]
+  var asks  = TreeMap.empty[Double, Double]
   var ts    = 0L
   var preId = 0L
   var seqId = 0L
 
   def reset() = {
-    bids.clear()
-    asks.clear()
+    bids = TreeMap.empty
+    asks = TreeMap.empty
     ts = 0
   }
 
-  def overrideBook(src: Seq[Seq[Double]], dst: TreeMap[Double, Double]) =
-    src.foreach { kv =>
-      if (kv(1) == 0) {
-        dst.remove(kv(0))
+  def overrideBook(src: Seq[Seq[Double]], dst: TreeMap[Double, Double]): TreeMap[Double, Double] =
+    src.foldLeft(dst) { (result, item) =>
+      if (item(1) == 0) {
+        result.removed(item(0))
       } else {
-        dst.put(kv(0), kv(1))
+        result.insert(item(0), item(1))
       }
     }
 
@@ -28,9 +30,10 @@ class Depth {
     if (d.isSnapshot) {
       reset()
     }
-    overrideBook(d.asks, asks)
-    overrideBook(d.bids, bids)
+    asks = overrideBook(d.asks, asks)
+    bids = overrideBook(d.bids, bids)
     ts = d.ts
+    println("apply depth")
 }
 
 case class DepthUpdate(

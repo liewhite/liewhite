@@ -12,7 +12,6 @@ import java.time.ZonedDateTime
 import zio.*
 import liewhite.json.{*, given}
 import liewhite.quant.trader.Trader.AggTrade
-import java.util.TreeMap
 
 trait Trader {
   def token2Symbol(token: String): String
@@ -204,23 +203,26 @@ object Trader {
     asks: Seq[Seq[Double]]
   ) derives Schema
 
-  case class Depth() {
-    val bids  = new TreeMap[Double, Double]
-    val asks  = new TreeMap[Double, Double]
+  import scala.collection.immutable.TreeMap
+  class Depth {
+    var bids  = TreeMap.empty[Double, Double]
+    var asks  = TreeMap.empty[Double, Double]
     var ts    = 0L
+    var preId = 0L
+    var seqId = 0L
 
     def reset() = {
-      bids.clear()
-      asks.clear()
+      bids = TreeMap.empty
+      asks = TreeMap.empty
       ts = 0
     }
 
-    def overrideBook(src: Seq[Seq[Double]], dst: TreeMap[Double, Double]) =
-      src.foreach { kv =>
-        if (kv(1) == 0) {
-          dst.remove(kv(0))
+    def overrideBook(src: Seq[Seq[Double]], dst: TreeMap[Double, Double]): TreeMap[Double, Double] =
+      src.foldLeft(dst) { (result, item) =>
+        if (item(1) == 0) {
+          result.removed(item(0))
         } else {
-          dst.put(kv(0), kv(1))
+          result.updated(item(0), item(1))
         }
       }
 
@@ -228,8 +230,8 @@ object Trader {
       if (isSnapshot) {
         reset()
       }
-      overrideBook(d.asks, asks)
-      overrideBook(d.bids, bids)
+      asks = overrideBook(d.asks, asks)
+      bids = overrideBook(d.bids, bids)
       ts = d.ts
   }
 
@@ -238,4 +240,5 @@ object Trader {
     bids: Seq[Seq[Double]],
     asks: Seq[Seq[Double]]
   )
+
 }
