@@ -12,6 +12,7 @@ trait SingleTokenStrategy {
   // 基于event作出决策
   def onEvent(event: Event, state: State): Chunk[Action]
   def token: String
+  def tickInterval: Duration
 }
 
 class LiveSingleEngine(okx: Trader, strategy: SingleTokenStrategy) {
@@ -33,7 +34,7 @@ class LiveSingleEngine(okx: Trader, strategy: SingleTokenStrategy) {
     val orderStream     = okx.orderStream(symbol).map(Event.Order(_))
     val aggTradeStream  = okx.aggTradeStream(symbol).map(Event.AggTrade(_))
     val positionStream  = okx.positionStream(symbol).map(Event.Position(_))
-    val tickerStream    = ZStream.tick(1.second).map(_ => Event.Clock(ZonedDateTime.now()))
+    val tickerStream    = ZStream.tick(strategy.tickInterval).map(_ => Event.Clock(ZonedDateTime.now()))
     val orderbookStream = okx.orderbookStream(symbol).map(Event.OrderBook(_))
 
     for {

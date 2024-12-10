@@ -37,6 +37,7 @@ class Strategy() extends SingleTokenStrategy {
   val maxPosition = orderSize * 3 // 3张合约
   val queue       = mutable.Queue[Trader.AggTrade]()
 
+  def tickInterval: Duration = 1.second
   def token: String = "PUFFER"
 
   def process(event: Event, state: State): Chunk[Action] = {
