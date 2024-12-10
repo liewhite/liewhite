@@ -205,14 +205,14 @@ object Trader {
 
   import scala.collection.immutable.TreeMap
   class Depth {
-    var bids  = TreeMap.empty[Double, Double]
+    var bids  = TreeMap.empty[Double, Double](using Ordering[Double].reverse)
     var asks  = TreeMap.empty[Double, Double]
     var ts    = 0L
     var preId = 0L
     var seqId = 0L
 
     def reset() = {
-      bids = TreeMap.empty
+      bids = TreeMap.empty(using Ordering[Double].reverse)
       asks = TreeMap.empty
       ts = 0
     }
