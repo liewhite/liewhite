@@ -264,14 +264,17 @@ class Okx(
       clientOrderID
     )
 
-    request[Okx.CreateOrderRequest, Seq[
-      Okx.RestResponse.CreateOrderResponse
-    ]](
-      "POST",
-      path,
-      Map.empty,
-      Some(order)
-    ).map(item => item.head.ordId)
+    for {
+      result <- request[Okx.CreateOrderRequest, Seq[
+                  Okx.RestResponse.CreateOrderResponse
+                ]](
+                  "POST",
+                  path,
+                  Map.empty,
+                  Some(order)
+                )
+      _ <- ZIO.when(result.head.sCode != "0")(ZIO.fail(Exception(s"order failed: ${result.head}")))
+    } yield result.head.ordId
   }
 
   override def getOpenOrders(symbol: Option[String]): Task[Seq[Trader.Order]] = {
@@ -452,7 +455,6 @@ class Okx(
     (ZIO.attemptBlocking {
       client.newCall(req).execute()
     }.flatMap { res =>
-
       val body = String(res.body().bytes())
       if (!res.isSuccessful()) {
         ZIO.fail(Exception(s"failed send request: ${path} ${res.code()}"))
