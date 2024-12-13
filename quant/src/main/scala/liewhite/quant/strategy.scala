@@ -38,7 +38,7 @@ class Strategy() extends SingleTokenStrategy {
   val queue       = mutable.Queue[Trader.AggTrade]()
 
   def tickInterval: Duration = 1.second
-  def token: String = "PUFFER"
+  def token: String          = "PUFFER"
 
   def process(event: Event, state: State): Chunk[Action] = {
     // 每10秒重新挂单
@@ -114,10 +114,8 @@ class Strategy() extends SingleTokenStrategy {
 object Main extends ZIOAppDefault {
   def run =
     val okx = Okx("", "", "")
-    okx.orderbookStream("BTC-USDT-SWAP").map(item =>{
-      (item.asks.head(0)  + item.bids.head(0)) / 2
-    }).debug.runDrain
-
+    okx.symbolsInfo().map(data => data.foreach(println)) *>
+      okx.tickers().map(data => data.foreach(println))
   // val strategy = new Strategy()
   // val engine   = LiveSingleEngine(okx, strategy)
   // engine

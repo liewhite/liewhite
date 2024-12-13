@@ -16,7 +16,9 @@ import liewhite.quant.trader.Trader.AggTrade
 trait Trader {
   def token2Symbol(token: String): String
   // def symbolsInfo(): Task[Seq[Trader.SymbolInfo]]
-  def symbolInfo(symbol: String): Task[Trader.SymbolInfo]
+  def symbolsInfo(): Task[Seq[Trader.SymbolInfo]]
+
+  def tickers(): Task[Seq[Trader.Ticker]]
 
   def klines(symbol: String, interval: String, limit: Int): Task[Seq[Trader.Kline]]
   // 统一使用小写表示
@@ -120,6 +122,17 @@ object Trader {
   }
 
   object OrderState {}
+
+  case class Ticker(
+    symbol: String,
+    ts: Long,
+    last: Double,
+    bid1: Double,
+    ask1: Double,
+    volCcy24h: Double,
+    vol24h: Double
+  ) derives Schema
+
   case class SymbolInfo(
     symbol: String,
     settelCcy: String,    // 结算货币

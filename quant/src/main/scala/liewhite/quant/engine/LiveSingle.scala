@@ -38,8 +38,9 @@ class LiveSingleEngine(okx: Trader, strategy: SingleTokenStrategy) {
     val orderbookStream = okx.orderbookStream(symbol).map(Event.OrderBook(_))
 
     for {
-      symbolInfo <- okx.symbolInfo(symbol)
-      _          <- syncAccount(state)
+      symbolsInfo <- okx.symbolsInfo()
+      symbolInfo   = symbolsInfo.find(_.symbol == symbol).get
+      _           <- syncAccount(state)
       _ <- {
         orderStream
           .mergeHaltEither(aggTradeStream)

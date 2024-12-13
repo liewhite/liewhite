@@ -38,11 +38,11 @@ class Okx(
   def token2Symbol(token: String): String =
     s"$token-USDT-SWAP".toUpperCase()
 
-  def symbolInfo(symbol: String): Task[Trader.SymbolInfo] =
+  def symbolsInfo(): Task[Seq[Trader.SymbolInfo]] =
     request[Unit, Seq[Map[String, String]]](
       "GET",
       s"api/v5/public/instruments",
-      Map("instType" -> "SWAP", "instId" -> symbol),
+      Map("instType" -> "SWAP"),
       None,
       false
     ).map { data =>
@@ -57,7 +57,6 @@ class Okx(
             item("lotSz").toDouble
           )
         )
-        .head
     }
 
   def getDepth(symbol: String, depth: Int): Task[Trader.OrderBook] =
@@ -77,6 +76,31 @@ class Okx(
         item.asks.map(i => i.map(_.toDouble))
       )
     }
+
+  def tickers(): Task[Seq[Trader.Ticker]] = {
+    val result = request[Unit, Seq[Map[String, String]]](
+      "GET",
+      s"api/v5/market/tickers",
+      Map("instType" -> "SWAP"),
+      None,
+      false
+    )
+    result.map { item =>
+      item.map { data =>
+        Trader.Ticker(
+          data("instId"),
+          data("ts").toLong,
+          data("last").toDouble,
+          data("bidPx").toDouble,
+          data("askPx").toDouble,
+          data("volCcy24h").toDouble,
+          data("vol24h").toDouble
+        )
+
+      }
+    }
+
+  }
 
   def klines(symbol: String, interval: String, limit: Int = 100): Task[Seq[Trader.Kline]] = {
     val result = request[Unit, Seq[Seq[String]]](
@@ -505,7 +529,6 @@ class Okx(
       val preSeqId = update.preId
       val newSeqId = update.id
       val snap     = state._2
-
 
       // 快照
       if (preSeqId == -1) {
